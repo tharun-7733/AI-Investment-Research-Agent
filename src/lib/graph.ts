@@ -15,7 +15,7 @@ const builder = new StateGraph(GraphState)
   .addNode("webSearch", webSearchNode)
   .addNode("financials", financialsNode)
   .addNode("competitive", competitiveNode)
-  .addNode("synthesis", synthesisNode)
+  .addNode("synthesisNode", synthesisNode)
   .addNode("decision", decisionNode)
   .addNode("reporter", reporterNode)
   
@@ -26,12 +26,12 @@ const builder = new StateGraph(GraphState)
   .addEdge("identifier", "financials")
   .addEdge("identifier", "competitive")
   
-  // Fan-in: wait for all 3 before synthesis
-  .addEdge("webSearch", "synthesis")
-  .addEdge("financials", "synthesis")
-  .addEdge("competitive", "synthesis")
+  // Fan-in: wait for all 3 before synthesisNode
+  .addEdge("webSearch", "synthesisNode")
+  .addEdge("financials", "synthesisNode")
+  .addEdge("competitive", "synthesisNode")
   
-  .addEdge("synthesis", "decision")
+  .addEdge("synthesisNode", "decision")
   .addEdge("decision", "reporter")
   .addEdge("reporter", END);
 

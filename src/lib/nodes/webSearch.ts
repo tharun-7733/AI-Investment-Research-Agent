@@ -32,7 +32,9 @@ export const webSearchNode = async (state: AgentState): Promise<Partial<AgentSta
     
     let queries: string[] = [];
     try {
-      queries = JSON.parse(queryJsonStr);
+      const match = queryJsonStr.match(/\[[\s\S]*\]/);
+      const cleanJson = match ? match[0] : queryJsonStr;
+      queries = JSON.parse(cleanJson);
       if (!Array.isArray(queries)) {
         queries = [];
       }
@@ -79,7 +81,9 @@ export const webSearchNode = async (state: AgentState): Promise<Partial<AgentSta
     
     let parsedResult;
     try {
-      parsedResult = JSON.parse(synthJsonStr);
+      const match = synthJsonStr.match(/\{[\s\S]*\}/);
+      const cleanJson = match ? match[0] : synthJsonStr;
+      parsedResult = JSON.parse(cleanJson);
     } catch (e) {
       console.error("[WebSearchNode] Failed to parse synthesis:", e);
       parsedResult = {

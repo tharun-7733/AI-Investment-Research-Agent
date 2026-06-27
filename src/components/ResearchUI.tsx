@@ -1,244 +1,319 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
-import ReactMarkdown from "react-markdown";
-import { DimensionChart } from "./DimensionChart";
-import { Search, Activity, FileText, CheckCircle, AlertTriangle, XCircle, Loader2 } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { Navbar } from "./Navbar";
+import { Hero } from "./Hero";
+import { AgentTrace } from "./AgentTrace";
+import { VerdictCard } from "./VerdictCard";
+import { ScoreCards } from "./ScoreCards";
+import { StrengthsRisks } from "./StrengthsRisks";
+import { ResearchReport } from "./ResearchReport";
+import type { AgentState } from "@/lib/types";
 
-type AgentState = {
-  companyName: string;
-  ticker?: string;
-  sector?: string;
-  country?: string;
-  sentimentScore?: number;
-  resolvedName?: string;
-  financialHealthScore?: number;
-  valuationScore?: number;
-  growthScore?: number;
-  moatScore?: number;
-  synthesisScore?: number;
-  verdict?: "INVEST" | "WATCH" | "PASS";
-  report?: string;
-  exchange?: string | null;
-  industry?: string;
-  isPublic?: boolean;
-  founded?: string | null;
-  companyDescription?: string;
-  logs: string[];
-};
+type AppState = "idle" | "analyzing" | "done";
 
 export function ResearchUI() {
-  const [companyName, setCompanyName] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [agentState, setAgentState] = useState<AgentState>({
-    companyName: "",
-    logs: [],
-  });
-  
-  const logsEndRef = useRef<HTMLDivElement>(null);
+  const [appState, setAppState] = useState<AppState>("idle");
+  const [logs, setLogs] = useState<string[]>([]);
+  const [result, setResult] = useState<AgentState | null>(null);
+  const [elapsedMs, setElapsedMs] = useState(0);
+  const startTimeRef = useRef<number | null>(null);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const resultsRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    logsEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [agentState.logs]);
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, []);
 
-  const startResearch = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!companyName) return;
+  const handleAnalyze = async (company: string) => {
+    setAppState("analyzing");
+    setLogs(["🚀 Initializing AlphaSignal research pipeline..."]);
+    setResult(null);
+    setElapsedMs(0);
 
-    setLoading(true);
-    setAgentState({ companyName, logs: ["🚀 Starting Research..."] });
+    startTimeRef.current = Date.now();
+    timerRef.current = setInterval(() => {
+      setElapsedMs(Date.now() - (startTimeRef.current ?? Date.now()));
+    }, 100);
+
+    // Smooth scroll to results
+    setTimeout(() => {
+      resultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 300);
 
     try {
       const res = await fetch("/api/research", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ companyName }),
+        body: JSON.stringify({ company }),
       });
 
-      if (!res.ok) throw new Error("Failed to start research");
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: "Unknown error" }));
+        throw new Error(err.error || "Request failed");
+      }
 
       const reader = res.body?.getReader();
       const decoder = new TextDecoder();
+      if (!reader) throw new Error("No stream body");
 
-      if (!reader) return;
-
+      let buffer = "";
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
 
-        const chunk = decoder.decode(value, { stream: true });
-        const lines = chunk.split("\n\n");
+        buffer += decoder.decode(value, { stream: true });
+        const parts = buffer.split("\n\n");
+        buffer = parts.pop() ?? "";
 
-        for (const line of lines) {
-          if (line.startsWith("data: ")) {
-            const dataStr = line.replace("data: ", "");
-            if (dataStr === "[DONE]") {
-              setLoading(false);
-              return;
+        for (const part of parts) {
+          if (!part.startsWith("data: ")) continue;
+          const dataStr = part.slice(6).trim();
+
+          if (dataStr === "[DONE]") {
+            if (timerRef.current) clearInterval(timerRef.current);
+            setAppState("done");
+            continue;
+          }
+
+          try {
+            const parsed = JSON.parse(dataStr);
+
+            if (parsed.type === "log") {
+              setLogs(prev => [...prev, parsed.message]);
+            } else if (parsed.type === "result") {
+              setResult(parsed.data as AgentState);
+            } else if (parsed.type === "error") {
+              setLogs(prev => [...prev, `❌ ${parsed.message}`]);
             }
-            try {
-              const parsed = JSON.parse(dataStr);
-              if (parsed.type === "node_end") {
-                setAgentState((prev) => ({
-                  ...prev,
-                  ...parsed.state,
-                }));
-              }
-            } catch (e) {
-              console.error("Error parsing stream chunk", e);
-            }
+          } catch {
+            /* ignore parse errors */
           }
         }
       }
     } catch (error) {
-      console.error(error);
-      setAgentState((prev) => ({
-        ...prev,
-        logs: [...prev.logs, "❌ Error occurred during research."],
-      }));
-    } finally {
-      setLoading(false);
+      if (timerRef.current) clearInterval(timerRef.current);
+      setLogs(prev => [...prev, `❌ Error: ${error instanceof Error ? error.message : "Unknown error"}`]);
+      setAppState("done");
     }
   };
 
-  const getVerdictColor = (verdict?: string) => {
-    if (verdict === "INVEST") return "text-green-600 bg-green-50 border-green-200";
-    if (verdict === "WATCH") return "text-yellow-600 bg-yellow-50 border-yellow-200";
-    if (verdict === "PASS") return "text-red-600 bg-red-50 border-red-200";
-    return "text-gray-600 bg-gray-50 border-gray-200";
-  };
+  const scores = result?.scores;
+  const synthesis = result?.synthesis;
+  const companyInfo = result?.companyInfo;
+  const webAnalysis = result?.webAnalysis;
 
-  const getVerdictIcon = (verdict?: string) => {
-    if (verdict === "INVEST") return <CheckCircle className="w-8 h-8 text-green-600" />;
-    if (verdict === "WATCH") return <AlertTriangle className="w-8 h-8 text-yellow-600" />;
-    if (verdict === "PASS") return <XCircle className="w-8 h-8 text-red-600" />;
-    return <Activity className="w-8 h-8 text-gray-400" />;
-  };
+  const hasResults = appState !== "idle";
 
   return (
-    <div className="min-h-screen bg-gray-50 text-gray-900 font-sans">
-      <header className="bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between sticky top-0 z-10 shadow-sm">
-        <div className="flex items-center gap-2 text-blue-600">
-          <Activity className="w-6 h-6" />
-          <h1 className="font-bold text-xl tracking-tight">AI Investment Research Agent</h1>
-        </div>
-        <form onSubmit={startResearch} className="flex gap-2 max-w-md w-full relative">
-          <input
-            type="text"
-            placeholder="Enter company name (e.g. Apple, Tesla)..."
-            value={companyName}
-            onChange={(e) => setCompanyName(e.target.value)}
-            className="w-full px-4 py-2 pl-10 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            disabled={loading}
-          />
-          <Search className="w-5 h-5 text-gray-400 absolute left-3 top-2.5" />
-          <button
-            type="submit"
-            disabled={loading || !companyName}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-full font-medium transition-colors disabled:opacity-50 flex items-center gap-2"
-          >
-            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Analyze"}
-          </button>
-        </form>
-      </header>
+    <div style={{ minHeight: "100vh", background: "var(--bg-deep)" }}>
+      <Navbar isAnalyzing={appState === "analyzing"} hasResults={appState === "done"} />
 
-      <main className="max-w-7xl mx-auto p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
-        
-        {/* Left Panel: Trace & Metrics */}
-        <div className="lg:col-span-4 flex flex-col gap-6">
-          {/* Verdict Card */}
-          <div className={`p-6 rounded-2xl border ${getVerdictColor(agentState.verdict)} shadow-sm transition-all flex flex-col items-center justify-center text-center`}>
-            {getVerdictIcon(agentState.verdict)}
-            <h2 className="text-3xl font-black mt-2 tracking-tight">
-              {agentState.verdict || "AWAITING"}
-            </h2>
-            <p className="text-sm font-medium mt-1 opacity-80 uppercase tracking-widest">
-              Final Verdict
-            </p>
-            {agentState.synthesisScore !== undefined && (
-              <div className="mt-4 inline-flex items-center gap-1 bg-white/50 px-3 py-1 rounded-full text-sm font-bold shadow-sm">
-                Score: <span className="text-lg">{agentState.synthesisScore.toFixed(1)}/10</span>
+      {/* Hero — always visible */}
+      <Hero onAnalyze={handleAnalyze} isLoading={appState === "analyzing"} />
+
+      {/* Results workspace */}
+      {hasResults && (
+        <div
+          ref={resultsRef}
+          style={{
+            padding: "0 24px 80px",
+            maxWidth: "1400px",
+            margin: "0 auto",
+            animation: "fadeIn 0.6s ease forwards",
+          }}
+        >
+          {/* Section label */}
+          <div
+            style={{
+              marginBottom: "32px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+            }}
+          >
+            <div>
+              <div
+                style={{
+                  fontFamily: "'DM Mono', monospace",
+                  fontSize: "10px",
+                  letterSpacing: "0.12em",
+                  color: "#606880",
+                  textTransform: "uppercase",
+                  marginBottom: "4px",
+                }}
+              >
+                Analysis Workspace
+              </div>
+              <div
+                style={{
+                  fontFamily: "'Syne', sans-serif",
+                  fontWeight: 700,
+                  fontSize: "20px",
+                  color: "#fff",
+                  letterSpacing: "-0.02em",
+                }}
+              >
+                {result?.companyInfo?.name ?? result?.companyInput ?? "Research in Progress"}
+              </div>
+            </div>
+
+            {companyInfo && (
+              <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                {companyInfo.ticker && (
+                  <MetaBadge label={companyInfo.ticker} color="#5EA8FF" />
+                )}
+                {companyInfo.sector && (
+                  <MetaBadge label={companyInfo.sector} color="#A8B0C2" />
+                )}
+                {companyInfo.country && (
+                  <MetaBadge label={companyInfo.country} color="#A8B0C2" />
+                )}
+                {companyInfo.isPublic === false && (
+                  <MetaBadge label="PRIVATE" color="#F5C842" />
+                )}
               </div>
             )}
           </div>
 
-          {/* Radar Chart */}
-          <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm h-64 flex flex-col">
-            <h3 className="text-sm font-bold text-gray-500 uppercase tracking-wider mb-2">Dimension Scores</h3>
-            <div className="flex-1">
-              <DimensionChart 
-                growth={agentState.growthScore || 0}
-                moat={agentState.moatScore || 0}
-                health={agentState.financialHealthScore || 0}
-                sentiment={agentState.sentimentScore || 0}
-                valuation={agentState.valuationScore || 0}
+          {/* Main split layout */}
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "320px 1fr",
+              gap: "20px",
+              alignItems: "start",
+              marginBottom: "24px",
+            }}
+          >
+            {/* Left: Agent Trace */}
+            <div style={{ position: "sticky", top: "80px" }}>
+              <AgentTrace
+                logs={logs}
+                isLoading={appState === "analyzing"}
+                elapsedMs={elapsedMs}
+              />
+            </div>
+
+            {/* Right: Results */}
+            <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+
+              {/* Verdict Card */}
+              <VerdictCard
+                companyName={companyInfo?.name ?? result?.companyInput}
+                verdict={result?.verdict}
+                confidence={result?.confidence}
+                headline={result?.headline}
+                timeHorizon={result?.timeHorizon}
+                weightedTotal={scores?.weightedTotal}
+              />
+
+              {/* Score Cards */}
+              {scores && (
+                <div>
+                  <SectionHeader label="Investment Scorecard" sublabel="Weighted across 5 dimensions" />
+                  <ScoreCards
+                    growth={scores.growth}
+                    moat={scores.moat}
+                    financialHealth={scores.financialHealth}
+                    sentiment={scores.sentiment}
+                    valuation={scores.valuation}
+                  />
+                </div>
+              )}
+
+              {/* Strengths & Risks */}
+              {synthesis && (synthesis.keyStrengths?.length || synthesis.keyRisks?.length) && (
+                <div>
+                  <SectionHeader label="Investment Factors" sublabel="Key strengths and material risks" />
+                  <StrengthsRisks
+                    strengths={synthesis.keyStrengths}
+                    risks={synthesis.keyRisks}
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Full-width Report section */}
+          <div>
+            <SectionHeader label="Research Report" sublabel="AI-generated investment brief" />
+            <div style={{ height: "700px" }}>
+              <ResearchReport
+                report={result?.report}
+                rawState={result}
+                headline={result?.headline}
               />
             </div>
           </div>
 
-          {/* Agent Trace Log */}
-          <div className="bg-gray-900 border border-gray-800 rounded-2xl p-4 shadow-inner flex flex-col flex-1 min-h-[300px]">
-            <h3 className="text-sm font-bold text-gray-400 flex items-center gap-2 mb-4">
-              <Loader2 className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-              Agent Execution Trace
-            </h3>
-            <div className="flex-1 overflow-y-auto space-y-2 font-mono text-xs text-green-400">
-              {agentState.logs?.map((log, i) => (
-                <div key={i} className="border-l-2 border-gray-700 pl-3 py-1">
-                  {log}
-                </div>
-              ))}
-              {agentState.logs?.length === 0 && !loading && (
-                <div className="text-gray-600 italic">No execution history.</div>
-              )}
-              <div ref={logsEndRef} />
-            </div>
+          {/* Footer watermark */}
+          <div
+            style={{
+              marginTop: "40px",
+              textAlign: "center",
+              fontFamily: "'DM Mono', monospace",
+              fontSize: "10px",
+              color: "#606880",
+              letterSpacing: "0.06em",
+            }}
+          >
+            ALPHASIGNAL · AI INVESTMENT RESEARCH · NOT FINANCIAL ADVICE
           </div>
         </div>
+      )}
+    </div>
+  );
+}
 
-        {/* Right Panel: Final Report */}
-        <div className="lg:col-span-8 bg-white border border-gray-200 rounded-2xl shadow-sm flex flex-col overflow-hidden">
-          <div className="bg-gray-50 border-b border-gray-200 p-4 flex flex-wrap items-center gap-2">
-            <FileText className="w-5 h-5 text-gray-500" />
-            <h2 className="font-bold text-gray-700">Investment Brief</h2>
-            {agentState.resolvedName && (
-              <div className="ml-auto flex flex-wrap gap-2 items-center text-xs font-semibold">
-                {agentState.ticker && (
-                  <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded font-bold">
-                    {agentState.ticker}
-                    {agentState.exchange ? ` · ${agentState.exchange}` : ""}
-                  </span>
-                )}
-                {!agentState.ticker && (
-                  <span className="bg-gray-100 text-gray-600 px-2 py-1 rounded">PRIVATE</span>
-                )}
-                {agentState.sector && (
-                  <span className="bg-purple-100 text-purple-800 px-2 py-1 rounded">{agentState.sector}</span>
-                )}
-                {agentState.industry && agentState.industry !== agentState.sector && (
-                  <span className="bg-indigo-100 text-indigo-800 px-2 py-1 rounded">{agentState.industry}</span>
-                )}
-                {agentState.country && (
-                  <span className="bg-green-100 text-green-800 px-2 py-1 rounded">{agentState.country}</span>
-                )}
-              </div>
-            )}
-          </div>
-          
-          <div className="p-8 prose prose-blue max-w-none flex-1 overflow-y-auto">
-            {agentState.report ? (
-              <ReactMarkdown>{agentState.report}</ReactMarkdown>
-            ) : (
-              <div className="h-full flex flex-col items-center justify-center text-gray-400">
-                <FileText className="w-16 h-16 mb-4 opacity-20" />
-                <p className="text-lg font-medium">Report will appear here.</p>
-                <p className="text-sm">Enter a company name and click Analyze to begin.</p>
-              </div>
-            )}
-          </div>
+function SectionHeader({ label, sublabel }: { label: string; sublabel?: string }) {
+  return (
+    <div style={{ marginBottom: "16px" }}>
+      <div
+        style={{
+          fontFamily: "'Syne', sans-serif",
+          fontWeight: 700,
+          fontSize: "16px",
+          color: "#fff",
+          letterSpacing: "-0.01em",
+        }}
+      >
+        {label}
+      </div>
+      {sublabel && (
+        <div
+          style={{
+            fontFamily: "'Inter', sans-serif",
+            fontSize: "12px",
+            color: "#606880",
+            marginTop: "2px",
+          }}
+        >
+          {sublabel}
         </div>
+      )}
+    </div>
+  );
+}
 
-      </main>
+function MetaBadge({ label, color }: { label: string; color: string }) {
+  return (
+    <div
+      style={{
+        padding: "4px 10px",
+        borderRadius: "999px",
+        background: "rgba(255,255,255,0.04)",
+        border: `1px solid ${color}33`,
+        fontFamily: "'DM Mono', monospace",
+        fontSize: "11px",
+        color,
+        fontWeight: 500,
+        letterSpacing: "0.04em",
+      }}
+    >
+      {label}
     </div>
   );
 }

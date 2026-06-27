@@ -58,7 +58,9 @@ No markdown. The verdict must be defensible from the score data.`;
     result = JSON.parse(cleaned);
   } catch {
     const match = rawText.match(/\{[\s\S]*\}/);
-    if (match) result = JSON.parse(match[0]);
+    if (match) {
+      result = JSON.parse(match[0]);
+    }
   }
 
   const validVerdicts = ["INVEST", "WATCH", "PASS"];

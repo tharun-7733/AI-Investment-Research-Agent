@@ -41,8 +41,8 @@ export const financialsNode = async (state: AgentState): Promise<Partial<AgentSt
         ? String((response.content[0] as any).text) 
         : '';
         
-    const jsonStr = content.replace(/```json\n?/, '').replace(/```\n?$/, '').trim();
-    
+    const match = content.match(/\{[\s\S]*\}/);
+    const jsonStr = match ? match[0] : content;
     let parsedResult: any;
     try {
       parsedResult = JSON.parse(jsonStr);

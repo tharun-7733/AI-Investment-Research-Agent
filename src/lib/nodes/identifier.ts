@@ -42,8 +42,8 @@ ticker and exchange are null for private companies.`;
     const content = typeof response.content === 'string' ? response.content : (Array.isArray(response.content) && response.content.length > 0 && 'text' in response.content[0]) ? String((response.content[0] as any).text) : '';
     
     // Attempt to extract JSON if it was wrapped in markdown despite instructions
-    const jsonStr = content.replace(/```json\n?/, '').replace(/```\n?$/, '').trim();
-
+    const match = content.match(/\{[\s\S]*\}/);
+    const jsonStr = match ? match[0] : content;
     const parsedResult = JSON.parse(jsonStr);
 
     if (parsedResult.error) {
