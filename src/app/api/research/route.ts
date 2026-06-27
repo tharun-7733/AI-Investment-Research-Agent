@@ -1,52 +1,75 @@
 import { NextRequest } from "next/server";
-import { investmentGraph } from "@/lib/graph";
+import { runInvestmentAgent } from "@/lib/graph";
 
 export async function POST(req: NextRequest) {
-  const { companyName } = await req.json();
+  try {
+    const body = await req.json();
+    const company = body.company;
 
-  if (!companyName) {
-    return new Response("Missing company name", { status: 400 });
-  }
+    if (!company || typeof company !== "string" || company.trim() === "") {
+      return new Response(JSON.stringify({ error: "Company name required" }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
 
-  const stream = new ReadableStream({
-    async start(controller) {
-      try {
-        const streamResponse = await investmentGraph.streamEvents(
-          { companyInput: companyName },
-          { version: "v2" }
-        );
+    const encoder = new TextEncoder();
+    const encode = (text: string) => encoder.encode(text);
 
-        for await (const event of streamResponse) {
-          if (event.event === "on_chain_end" || event.event === "on_chat_model_stream") {
-            // we can filter specifically for UI updates if needed, 
-            // but usually we look for state updates from nodes
-          }
-          
-          if (event.event === "on_node_end") {
-            // When a node finishes, we send its state update
-            const data = JSON.stringify({
-              type: "node_end",
-              node: event.name,
-              state: event.data.output,
-            });
-            controller.enqueue(new TextEncoder().encode(`data: ${data}\n\n`));
-          }
+    const stream = new ReadableStream({
+      async start(controller) {
+        try {
+          const finalState = await runInvestmentAgent(company, (logs) => {
+            if (logs && logs.length > 0) {
+              const latest = logs[logs.length - 1];
+              controller.enqueue(
+                encode(
+                  `data: ${JSON.stringify({
+                    type: "log",
+                    message: latest,
+                  })}\n\n`
+                )
+              );
+            }
+          });
+
+          controller.enqueue(
+            encode(
+              `data: ${JSON.stringify({
+                type: "result",
+                data: finalState,
+              })}\n\n`
+            )
+          );
+        } catch (error) {
+          const errorMessage =
+            error instanceof Error ? error.message : String(error);
+          controller.enqueue(
+            encode(
+              `data: ${JSON.stringify({
+                type: "error",
+                message: errorMessage,
+              })}\n\n`
+            )
+          );
+        } finally {
+          controller.enqueue(encode(`data: [DONE]\n\n`));
+          controller.close();
         }
-        controller.enqueue(new TextEncoder().encode(`data: [DONE]\n\n`));
-        controller.close();
-      } catch (error: any) {
-        console.error("Stream error:", error);
-        controller.enqueue(new TextEncoder().encode(`data: {"error": "${error.message}"}\n\n`));
-        controller.close();
-      }
-    },
-  });
+      },
+    });
 
-  return new Response(stream, {
-    headers: {
-      "Content-Type": "text/event-stream",
-      "Cache-Control": "no-cache",
-      Connection: "keep-alive",
-    },
-  });
+    return new Response(stream, {
+      headers: {
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache",
+        Connection: "keep-alive",
+      },
+    });
+  } catch (error) {
+    return new Response(JSON.stringify({ error: "Invalid request payload" }), {
+      status: 400,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
 }
