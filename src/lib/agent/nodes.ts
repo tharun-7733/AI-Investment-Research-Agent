@@ -294,44 +294,165 @@ No markdown, no extra text.`;
 // 9. Competitive Intelligence Node
 export const competitiveIntel = async (state: State): Promise<Partial<State>> => {
   const llm = getLLM();
-  const schema = z.object({
-    moatScore: z.number().min(1).max(10).describe("Competitive moat score (1-10)"),
-    competitiveContext: z.string().describe("A summary of the company's competitive advantage (moat) and key competitors."),
-  });
-  
-  const structuredLlm = llm.withStructuredOutput(schema);
-  const prompt = `Analyze the competitive landscape for ${state.companyName} (${state.ticker}) in the ${state.sector} sector. 
-  Identify key competitors and assess the strength of its competitive moat. Provide a moat score (1-10) and a summary.`;
-  
-  const result = await structuredLlm.invoke(prompt);
-  
+  const resolvedName = state.resolvedName || state.companyName;
+  const industry = state.industry || state.sector || "Unknown Industry";
+  const webSearchSummary = state.sourceSummary || state.webSearchContext || "No web context available.";
+
+  const prompt = `Competitive Intelligence Analyst:
+
+You are a strategy consultant specializing in competitive analysis. Analyze ${resolvedName} in the context of its industry: ${industry}.
+
+Use this context:
+${webSearchSummary}
+
+Return ONLY a JSON object:
+{
+  "mainCompetitors": ["competitor1", "competitor2", "competitor3"],
+  "marketPosition": "leader | challenger | niche | emerging",
+  "moatType": "brand | network_effects | cost_advantage | switching_costs | IP | none",
+  "moatStrength": <1-10>,
+  "moatRationale": "2-3 sentences explaining the moat score",
+  "differentiators": ["point 1", "point 2"],
+  "threats": ["threat 1", "threat 2"],
+  "marketSizeTAM": "<estimated TAM or null>",
+  "competitiveScore": <1-10>
+}
+
+No markdown. Base answers on available data; note uncertainty where it exists.`;
+
+  const raw = await llm.invoke(prompt);
+  const rawText = typeof raw.content === "string" ? raw.content : JSON.stringify(raw.content);
+
+  let result: any = {};
+  try {
+    const cleaned = rawText.trim().replace(/^```json|```$/g, "").trim();
+    result = JSON.parse(cleaned);
+  } catch {
+    const match = rawText.match(/\{[\s\S]*\}/);
+    if (match) result = JSON.parse(match[0]);
+  }
+
+  const moatScore = result.moatStrength || result.competitiveScore || 5;
+  const competitiveScore = result.competitiveScore || moatScore;
+
   return {
-    moatScore: result.moatScore,
-    competitiveContext: result.competitiveContext,
-    logs: [`✅ Competitive Intel Complete - Moat Score: ${result.moatScore}/10`],
+    mainCompetitors: result.mainCompetitors || [],
+    marketPosition: result.marketPosition || "unknown",
+    moatType: result.moatType || "none",
+    moatScore,
+    moatRationale: result.moatRationale || "",
+    differentiators: result.differentiators || [],
+    threats: result.threats || [],
+    marketSizeTAM: result.marketSizeTAM || null,
+    competitiveScore,
+    competitiveContext: result.moatRationale
+      ? `${result.moatRationale} Market position: ${result.marketPosition}. Moat type: ${result.moatType}.`
+      : "Competitive analysis processed.",
+    logs: [
+      `✅ Competitive Intel Complete - Score: ${competitiveScore}/10, Position: ${result.marketPosition || "unknown"}, Moat: ${result.moatType || "none"}`,
+      `   Competitors: ${(result.mainCompetitors || []).join(", ") || "N/A"}`,
+    ],
   };
 };
 
 
 // 11. Synthesis Engine Node
 export const synthesisEngine = async (state: State): Promise<Partial<State>> => {
-  // Weights: Growth 25%, Moat 20%, Financial Health 25%, Sentiment 15%, Valuation 15%
-  const growthScore = state.growthScore || 5;
-  const moatScore = state.moatScore || 5;
-  const healthScore = state.financialHealthScore || 5;
-  const sentimentScore = state.sentimentScore || 5;
-  const valuationScore = state.valuationScore || 5;
+  const llm = getLLM();
+  const resolvedName = state.resolvedName || state.companyName;
+  
+  const companyInfo = `Sector: ${state.sector}, Industry: ${state.industry}, Founded: ${state.founded}. ${state.companyDescription}`;
+  const webAnalysis = `Sentiment: ${state.sentiment}. ${state.sourceSummary}`;
+  const financialAnalysis = `Health Score: ${state.financialHealthScore}. Rationale: ${state.financialHealthRationale}. Valuation Risk: ${state.valuationRisk}.`;
+  const competitiveAnalysis = `Position: ${state.marketPosition}. Moat: ${state.moatType}. Competitors: ${(state.mainCompetitors || []).join(", ")}. ${state.moatRationale}`;
 
-  const synthesisScore = 
-    (growthScore * 0.25) + 
-    (moatScore * 0.20) + 
-    (healthScore * 0.25) + 
-    (sentimentScore * 0.15) + 
-    (valuationScore * 0.15);
+  const prompt = `Synthesis & Scoring Engine:
+
+You are a partner at a top-tier venture capital / equity research firm. You have completed research on ${resolvedName}. Synthesize all findings into a final investment score.
+
+Research Package:
+- Company Info: ${companyInfo}
+- Web Sentiment: ${webAnalysis}
+- Financials: ${financialAnalysis}
+- Competitive Intel: ${competitiveAnalysis}
+
+Score each dimension from 1–10 using the rubric below, then compute a weighted total.
+
+Rubric:
+- Growth (25%): Revenue growth rate, market expansion, user/revenue trajectory
+- Moat (20%): Competitive defensibility, switching costs, network effects
+- Financial Health (25%): Margins, debt, cash, sustainability
+- Market Sentiment (15%): News tone, analyst consensus, public perception
+- Valuation (15%): Price vs. intrinsic value, risk-adjusted return potential
+
+Return ONLY a JSON object:
+{
+  "scores": {
+    "growth": <1-10>,
+    "moat": <1-10>,
+    "financialHealth": <1-10>,
+    "sentiment": <1-10>,
+    "valuation": <1-10>
+  },
+  "weightedTotal": <calculated 1-10, two decimal places>,
+  "growthRationale": "1-2 sentences",
+  "moatRationale": "1-2 sentences",
+  "financialHealthRationale": "1-2 sentences",
+  "sentimentRationale": "1-2 sentences",
+  "valuationRationale": "1-2 sentences",
+  "keyStrengths": ["strength 1", "strength 2", "strength 3"],
+  "keyRisks": ["risk 1", "risk 2", "risk 3"]
+}
+
+No markdown. Be rigorous — a score of 7+ must be genuinely justified.`;
+
+  const raw = await llm.invoke(prompt);
+  const rawText = typeof raw.content === "string" ? raw.content : JSON.stringify(raw.content);
+
+  let result: any = {};
+  try {
+    const cleaned = rawText.trim().replace(/^```json|```$/g, "").trim();
+    result = JSON.parse(cleaned);
+  } catch {
+    const match = rawText.match(/\{[\s\S]*\}/);
+    if (match) result = JSON.parse(match[0]);
+  }
+
+  const scores = result.scores || {};
+  const growthScore = scores.growth || state.growthScore || 5;
+  const moatScore = scores.moat || state.moatScore || 5;
+  const financialHealthScore = scores.financialHealth || state.financialHealthScore || 5;
+  const sentimentScore = scores.sentiment || state.sentimentScore || 5;
+  const valuationScore = scores.valuation || state.valuationScore || 5;
+
+  let synthesisScore = result.weightedTotal;
+  if (typeof synthesisScore !== 'number') {
+    synthesisScore = 
+      (growthScore * 0.25) + 
+      (moatScore * 0.20) + 
+      (financialHealthScore * 0.25) + 
+      (sentimentScore * 0.15) + 
+      (valuationScore * 0.15);
+  }
 
   return {
+    growthScore,
+    moatScore,
+    financialHealthScore,
+    sentimentScore,
+    valuationScore,
     synthesisScore,
-    logs: [`✅ Synthesis Complete - Final Score: ${synthesisScore.toFixed(2)}/10`],
+    synthesisGrowthRationale: result.growthRationale || "",
+    synthesisMoatRationale: result.moatRationale || "",
+    synthesisFinancialHealthRationale: result.financialHealthRationale || "",
+    synthesisSentimentRationale: result.sentimentRationale || "",
+    synthesisValuationRationale: result.valuationRationale || "",
+    keyStrengths: result.keyStrengths || [],
+    keyRisks: result.keyRisks || [],
+    logs: [
+      `✅ Synthesis Complete - Final Score: ${synthesisScore.toFixed(2)}/10`,
+      `   (Growth: ${growthScore}, Moat: ${moatScore}, Health: ${financialHealthScore}, Sentiment: ${sentimentScore}, Val: ${valuationScore})`
+    ],
   };
 };
 

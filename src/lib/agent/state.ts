@@ -37,6 +37,23 @@ export const GraphState = Annotation.Root({
   valuationRisk: Annotation<string>(),
   valuationRationale: Annotation<string>(),
   competitiveContext: Annotation<string>(),
+  mainCompetitors: Annotation<string[]>(),
+  marketPosition: Annotation<string>(),
+  moatType: Annotation<string>(),
+  moatRationale: Annotation<string>(),
+  differentiators: Annotation<string[]>(),
+  threats: Annotation<string[]>(),
+  marketSizeTAM: Annotation<string | null>(),
+  competitiveScore: Annotation<number>(),
+
+  // Synthesis Engine outputs
+  synthesisGrowthRationale: Annotation<string>(),
+  synthesisMoatRationale: Annotation<string>(),
+  synthesisFinancialHealthRationale: Annotation<string>(),
+  synthesisSentimentRationale: Annotation<string>(),
+  synthesisValuationRationale: Annotation<string>(),
+  keyStrengths: Annotation<string[]>(),
+  keyRisks: Annotation<string[]>(),
 
   // Scores (1-10)
   sentimentScore: Annotation<number>(),
