@@ -25,6 +25,17 @@ export const GraphState = Annotation.Root({
 
   // Financial & Competitive Contexts
   financialContext: Annotation<string>(),
+  revenueGrowthYoY: Annotation<string | null>(),
+  grossMargin: Annotation<string | null>(),
+  netMargin: Annotation<string | null>(),
+  debtToEquity: Annotation<number | string | null>(),
+  peRatio: Annotation<number | string | null>(),
+  marketCap: Annotation<string | null>(),
+  cashPosition: Annotation<string | null>(),
+  burnRate: Annotation<string | null>(),
+  financialHealthRationale: Annotation<string>(),
+  valuationRisk: Annotation<string>(),
+  valuationRationale: Annotation<string>(),
   competitiveContext: Annotation<string>(),
 
   // Scores (1-10)

@@ -6,6 +6,7 @@ import { tavilySearch, alphaVantageOverview, alphaVantageIncomeStatement } from 
 // Initialize LLM (we'll assume keys are in environment)
 const getLLM = () => new ChatGoogleGenerativeAI({ model: "gemini-3.0-pro", temperature: 0.1 });
 
+// 6. Company Identifier Node
 export const companyIdentifier = async (state: State): Promise<Partial<State>> => {
   const llm = getLLM();
 
@@ -81,6 +82,7 @@ Rules:
   };
 };
 
+// 7. Web Search Agent Node
 export const webSearchAgent = async (state: State): Promise<Partial<State>> => {
   const llm = getLLM();
   const name = state.resolvedName || state.companyName;
@@ -137,42 +139,71 @@ Example: ["query one", "query two", ...]`;
     .map((q, i) => `Query: ${q}\nResult: ${searchResults[i]}`)
     .join("\n\n---\n\n");
 
-  // Step 3: Synthesize into sentiment score + context
+
+  // Step 3: Synthesize with full equity analyst schema
   const schema = z.object({
+    keyDevelopments: z
+      .array(z.string())
+      .describe("Key recent developments about the company (3 bullets)"),
+    sentiment: z
+      .enum(["positive", "neutral", "negative"])
+      .describe("Overall investment sentiment"),
     sentimentScore: z
       .number()
       .min(1)
       .max(10)
       .describe("Sentiment score from 1 (very negative) to 10 (very positive)"),
-    webSearchContext: z
+    redFlags: z
+      .array(z.string())
+      .describe("Red flags, controversies, or risks identified. Empty array if none."),
+    tailwinds: z
+      .array(z.string())
+      .describe("Positive tailwinds or growth catalysts. Empty array if none."),
+    recentEvents: z
+      .array(z.string())
+      .describe("Notable recent events (earnings, product launches, leadership changes, etc.)"),
+    sourceSummary: z
       .string()
-      .describe(
-        "A comprehensive summary of recent news, controversies, outlook, and overall sentiment"
-      ),
+      .describe("2-sentence summary of what the web reveals about this company right now"),
   });
 
   const structuredLlm = llm.withStructuredOutput(schema);
-  const synthesisPrompt = `You are a financial research analyst. Based on the following web search results about ${name} (${ticker}), provide:
-1. A sentiment score (1-10) reflecting the overall investment sentiment
-2. A comprehensive summary covering: recent news, competitive position, leadership/red flags, and future outlook
+  const synthesisPrompt = `You are a senior equity research analyst. Below are raw web search results about ${name}.
 
 Search Results:
-${combinedResults.substring(0, 6000)}`;
+${combinedResults.substring(0, 6000)}
+
+Extract and return a structured analysis with:
+- keyDevelopments: 3 key bullet points
+- sentiment: "positive", "neutral", or "negative"
+- sentimentScore: 1-10 (1=very negative, 10=very positive)
+- redFlags: any controversies, risks, or warning signs (empty array if none)
+- tailwinds: positive growth catalysts (empty array if none)
+- recentEvents: notable recent events (earnings, leadership changes, product launches)
+- sourceSummary: 2-sentence summary of what the web reveals about this company right now
+
+Be factual. If data is missing for a field, use an empty array or a note saying data unavailable.`;
 
   const result = await structuredLlm.invoke(synthesisPrompt);
 
   return {
     sentimentScore: result.sentimentScore,
-    webSearchContext: result.webSearchContext,
+    sentiment: result.sentiment,
+    keyDevelopments: result.keyDevelopments,
+    redFlags: result.redFlags,
+    tailwinds: result.tailwinds,
+    recentEvents: result.recentEvents,
+    sourceSummary: result.sourceSummary,
+    webSearchContext: result.sourceSummary, // kept for downstream compatibility
     logs: [
-      `✅ Web Search Complete — Generated ${queries.length} queries, gathered ${searchResults.length} results`,
-      `   Sentiment Score: ${result.sentimentScore}/10`,
+      `✅ Web Search Complete — ${queries.length} queries, sentiment: ${result.sentiment} (${result.sentimentScore}/10)`,
+      `   Key Developments: ${result.keyDevelopments.length} | Red Flags: ${result.redFlags.length} | Tailwinds: ${result.tailwinds.length}`,
       `   Queries: ${queries.map((q, i) => `\n     ${i + 1}. ${q}`).join("")}`,
     ],
   };
 };
 
-
+// 8. Financial Analyst Node
 export const financialAnalyst = async (state: State): Promise<Partial<State>> => {
   let overview = "No financial data found.";
   let income = "No income statement found.";
@@ -183,33 +214,84 @@ export const financialAnalyst = async (state: State): Promise<Partial<State>> =>
   }
 
   const llm = getLLM();
-  const schema = z.object({
-    financialHealthScore: z.number().min(1).max(10).describe("Financial health score (1-10) based on margins, debt, etc."),
-    valuationScore: z.number().min(1).max(10).describe("Valuation score (1-10) based on P/E, EV/EBITDA, etc."),
-    growthScore: z.number().min(1).max(10).describe("Growth score (1-10) based on revenue and earnings growth."),
-    financialContext: z.string().describe("A summary of the financial health, valuation, and growth prospects."),
-  });
+  const financialData = `Overview Data:\n${overview.substring(0, 2000)}\n\nIncome Statement Data:\n${income.substring(0, 2000)}`;
   
-  const structuredLlm = llm.withStructuredOutput(schema);
-  const prompt = `Analyze the following financial data for ${state.resolvedName || state.companyName}${state.ticker ? ` (${state.ticker})` : ""} and provide scores (1-10) for Financial Health, Valuation, and Growth, along with a summary.
-  
-  Overview Data:
-  ${overview.substring(0, 2000)}
-  
-  Income Statement Data:
-  ${income.substring(0, 2000)}`;
-  
-  const result = await structuredLlm.invoke(prompt);
-  
+  const prompt = `Financial Analyst:
+You are a CFA-level financial analyst. Analyze the following financial data for ${state.resolvedName || state.companyName}.
+
+Financial Data:
+${financialData}
+
+Return ONLY a JSON object:
+{
+  "revenueGrowthYoY": "<% or null>",
+  "grossMargin": "<% or null>",
+  "netMargin": "<% or null>",
+  "debtToEquity": <ratio or null>,
+  "peRatio": <number or null>,
+  "marketCap": "<value with unit, e.g. $4.2B or null>",
+  "cashPosition": "<value or null>",
+  "burnRate": "<monthly burn for startups or null>",
+  "financialHealthScore": <1-10>,
+  "financialHealthRationale": "2-3 sentences explaining the score",
+  "valuationRisk": "low | medium | high",
+  "valuationRationale": "1-2 sentences"
+}
+
+If this is a private company and data is unavailable, estimate where possible using industry benchmarks and flag it with an "estimated": true field.
+No markdown, no extra text.`;
+
+  const raw = await llm.invoke(prompt);
+  const rawText = typeof raw.content === "string" ? raw.content : JSON.stringify(raw.content);
+
+  let result: any = {};
+  try {
+    const cleaned = rawText.trim().replace(/^```json|```$/g, "").trim();
+    result = JSON.parse(cleaned);
+  } catch {
+    const match = rawText.match(/\{[\s\S]*\}/);
+    if (match) result = JSON.parse(match[0]);
+  }
+
+  // Fallbacks for downstream nodes (Synthesis Engine)
+  let valuationScore = 5;
+  if (result.valuationRisk?.toLowerCase() === "low") valuationScore = 8;
+  else if (result.valuationRisk?.toLowerCase() === "high") valuationScore = 3;
+
+  let growthScore = 5;
+  if (result.revenueGrowthYoY) {
+    const val = parseFloat(result.revenueGrowthYoY);
+    if (!isNaN(val)) {
+      if (val > 20) growthScore = 8;
+      else if (val > 10) growthScore = 6;
+      else if (val > 0) growthScore = 5;
+      else growthScore = 3;
+    }
+  }
+
   return {
-    financialHealthScore: result.financialHealthScore,
-    valuationScore: result.valuationScore,
-    growthScore: result.growthScore,
-    financialContext: result.financialContext,
-    logs: [`✅ Financial Analysis Complete - Health: ${result.financialHealthScore}, Valuation: ${result.valuationScore}, Growth: ${result.growthScore}`],
+    revenueGrowthYoY: result.revenueGrowthYoY || null,
+    grossMargin: result.grossMargin || null,
+    netMargin: result.netMargin || null,
+    debtToEquity: result.debtToEquity || null,
+    peRatio: result.peRatio || null,
+    marketCap: result.marketCap || null,
+    cashPosition: result.cashPosition || null,
+    burnRate: result.burnRate || null,
+    financialHealthScore: result.financialHealthScore || 5,
+    financialHealthRationale: result.financialHealthRationale || "",
+    valuationRisk: result.valuationRisk || "medium",
+    valuationRationale: result.valuationRationale || "",
+    valuationScore,
+    growthScore,
+    financialContext: result.financialHealthRationale ? `${result.financialHealthRationale} ${result.valuationRationale || ""}` : "Financial data processed.",
+    logs: [
+      `✅ Financial Analysis Complete - Health: ${result.financialHealthScore || 5}/10, Valuation Risk: ${result.valuationRisk || "N/A"}`,
+    ],
   };
 };
 
+// 9. Competitive Intelligence Node
 export const competitiveIntel = async (state: State): Promise<Partial<State>> => {
   const llm = getLLM();
   const schema = z.object({
@@ -230,6 +312,8 @@ export const competitiveIntel = async (state: State): Promise<Partial<State>> =>
   };
 };
 
+
+// 11. Synthesis Engine Node
 export const synthesisEngine = async (state: State): Promise<Partial<State>> => {
   // Weights: Growth 25%, Moat 20%, Financial Health 25%, Sentiment 15%, Valuation 15%
   const growthScore = state.growthScore || 5;
@@ -269,6 +353,9 @@ export const decisionNode = async (state: State): Promise<Partial<State>> => {
   };
 };
 
+
+
+// 30. Report Generator Node
 export const reportGenerator = async (state: State): Promise<Partial<State>> => {
   const llm = getLLM();
   const prompt = `You are a Senior AI Investment Analyst. Generate a comprehensive investment research report in Markdown format for ${state.companyName} (${state.ticker}).
