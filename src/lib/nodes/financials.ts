@@ -1,101 +1,105 @@
-// Node: Financial Analyst (CFA-level)
-// Fetches Alpha Vantage data and runs financial analysis via LLM.
-
-import { State } from "../state";
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
-import { alphaVantageOverview, alphaVantageIncomeStatement } from "../tools/alphaVantage";
+import { AgentState, FinancialAnalysis } from "../types";
+import { getFinancialData } from "../tools/alphaVantage";
 
-const getLLM = () => new ChatGoogleGenerativeAI({ model: "gemini-2.0-flash", temperature: 0.1 });
-
-export const financialAnalyst = async (state: State): Promise<Partial<State>> => {
-  let overview = "No financial data found.";
-  let income = "No income statement found.";
-
-  if (state.companyInfo?.isPublic && state.companyInfo?.ticker) {
-    overview = await alphaVantageOverview(state.companyInfo.ticker);
-    income = await alphaVantageIncomeStatement(state.companyInfo.ticker);
+export const financialsNode = async (state: AgentState): Promise<Partial<AgentState>> => {
+  const companyInfo = state.companyInfo;
+  
+  if (!companyInfo?.name) {
+    return {
+      streamLog: ["❌ Error: No company name available for Financials Node."],
+      financialAnalysis: getEmptyAnalysis()
+    };
   }
 
-  const llm = getLLM();
-  const financialData = `Overview Data:\n${overview.substring(0, 2000)}\n\nIncome Statement Data:\n${income.substring(0, 2000)}`;
+  const resolvedName = companyInfo.name;
+  const ticker = companyInfo.ticker || null;
+  const sector = companyInfo.sector || "their sector";
 
-  const name = state.companyInfo?.name || state.companyInput;
-  const prompt = `Financial Analyst:
-You are a CFA-level financial analyst. Analyze the following financial data for ${name}.
-
-Financial Data:
-${financialData}
-
-Return ONLY a JSON object:
-{
-  "revenueGrowthYoY": "<% or null>",
-  "grossMargin": "<% or null>",
-  "netMargin": "<% or null>",
-  "debtToEquity": <ratio or null>,
-  "peRatio": <number or null>,
-  "marketCap": "<value with unit, e.g. $4.2B or null>",
-  "cashPosition": "<value or null>",
-  "burnRate": "<monthly burn for startups or null>",
-  "financialHealthScore": <1-10>,
-  "financialHealthRationale": "2-3 sentences explaining the score",
-  "valuationRisk": "low | medium | high",
-  "valuationRationale": "1-2 sentences"
-}
-
-If this is a private company and data is unavailable, estimate where possible using industry benchmarks and flag it with an "estimated": true field.
-No markdown, no extra text.`;
-
-  const raw = await llm.invoke(prompt);
-  const rawText = typeof raw.content === "string" ? raw.content : JSON.stringify(raw.content);
-
-  let result: any = {};
   try {
-    const cleaned = rawText.trim().replace(/^```json|```$/g, "").trim();
-    result = JSON.parse(cleaned);
-  } catch {
-    const match = rawText.match(/\{[\s\S]*\}/);
-    if (match) result = JSON.parse(match[0]);
-  }
+    // Step 1 — Fetch data
+    const financialData = await getFinancialData(ticker);
 
-  // Seed downstream scores from qualitative metrics
-  let valuationScore = 5;
-  if (result.valuationRisk?.toLowerCase() === "low") valuationScore = 8;
-  else if (result.valuationRisk?.toLowerCase() === "high") valuationScore = 3;
+    // Step 2 — Analyze with Gemini (per latest instructions)
+    const model = new ChatGoogleGenerativeAI({
+      model: "gemini-2.5-flash",
+      temperature: 0,
+      maxOutputTokens: 600,
+    });
 
-  let growthScore = 5;
-  if (result.revenueGrowthYoY) {
-    const val = parseFloat(result.revenueGrowthYoY);
-    if (!isNaN(val)) {
-      if (val > 20) growthScore = 8;
-      else if (val > 10) growthScore = 6;
-      else if (val > 0) growthScore = 5;
-      else growthScore = 3;
+    const systemPrompt = "You are a CFA-level financial analyst.\nReturn ONLY valid JSON, no markdown, no explanation.";
+    const userPrompt = `Analyze this financial data for ${resolvedName}:\n${JSON.stringify(financialData, null, 2)}\n\nReturn this exact JSON:\n{\n  "revenueGrowthYoY": number | null,\n  "grossMargin": number | null,\n  "netMargin": number | null,\n  "debtToEquity": number | null,\n  "peRatio": number | null,\n  "marketCap": "string | null",\n  "financialHealthScore": number (1-10),\n  "financialHealthRationale": "string",\n  "valuationRisk": "low" | "medium" | "high",\n  "valuationRationale": "string"\n}\n\nFor private companies with no data, estimate using \nindustry benchmarks for ${sector} and set \nestimated: true in the response.\nScore conservatively if data is unavailable.`;
+
+    const response = await model.invoke([
+      { role: "system", content: systemPrompt },
+      { role: "user", content: userPrompt }
+    ]);
+
+    const content = typeof response.content === 'string' 
+      ? response.content 
+      : (Array.isArray(response.content) && response.content.length > 0 && 'text' in response.content[0]) 
+        ? String((response.content[0] as any).text) 
+        : '';
+        
+    const jsonStr = content.replace(/```json\n?/, '').replace(/```\n?$/, '').trim();
+    
+    let parsedResult: any;
+    try {
+      parsedResult = JSON.parse(jsonStr);
+    } catch (e) {
+      console.error("[FinancialsNode] Failed to parse JSON:", e);
+      parsedResult = getEmptyAnalysis();
     }
-  }
 
-  return {
-    financialAnalysis: {
-      revenueGrowthYoY: result.revenueGrowthYoY || null,
-      grossMargin: result.grossMargin || null,
-      netMargin: result.netMargin || null,
-      debtToEquity: result.debtToEquity || null,
-      peRatio: result.peRatio || null,
-      marketCap: result.marketCap || null,
-      cashPosition: result.cashPosition || null,
-      burnRate: result.burnRate || null,
-      financialHealthScore: result.financialHealthScore || 5,
-      financialHealthRationale: result.financialHealthRationale || "",
-      valuationRisk: result.valuationRisk || "medium",
-      valuationRationale: result.valuationRationale || "",
-      estimated: result.estimated || false,
-    },
-    scores: {
-      financialHealth: result.financialHealthScore || 5,
-      valuation: valuationScore,
-      growth: growthScore,
-    },
-    streamLog: [
-      `✅ Financial Analysis Complete - Health: ${result.financialHealthScore || 5}/10, Valuation Risk: ${result.valuationRisk || "N/A"}`,
-    ],
-  };
+    // Always return a valid financialHealthScore even if estimated
+    const healthScore = typeof parsedResult.financialHealthScore === 'number' 
+      ? parsedResult.financialHealthScore 
+      : 5;
+    
+    // Safely cast fields expecting string|null in the AgentState types
+    const toStr = (val: any) => (val !== null && val !== undefined) ? String(val) : null;
+
+    const analysis: FinancialAnalysis = {
+      revenueGrowthYoY: toStr(parsedResult.revenueGrowthYoY),
+      grossMargin: toStr(parsedResult.grossMargin),
+      netMargin: toStr(parsedResult.netMargin),
+      debtToEquity: parsedResult.debtToEquity,
+      peRatio: parsedResult.peRatio,
+      marketCap: toStr(parsedResult.marketCap),
+      financialHealthScore: healthScore,
+      financialHealthRationale: parsedResult.financialHealthRationale || "No data available to determine health.",
+      valuationRisk: parsedResult.valuationRisk || "medium",
+      valuationRationale: parsedResult.valuationRationale || "No data available to determine valuation.",
+      estimated: !!parsedResult.estimated
+    };
+
+    // Step 3
+    return {
+      financialAnalysis: analysis,
+      streamLog: [`✅ Financials analyzed. \n  Health score: ${healthScore}/10`]
+    };
+
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    return {
+      streamLog: [`❌ Error in Financials Node: ${errorMessage}`],
+      financialAnalysis: getEmptyAnalysis()
+    };
+  }
 };
+
+function getEmptyAnalysis(): FinancialAnalysis {
+  return {
+    revenueGrowthYoY: null,
+    grossMargin: null,
+    netMargin: null,
+    debtToEquity: null,
+    peRatio: null,
+    marketCap: null,
+    financialHealthScore: 5,
+    financialHealthRationale: "Failed to fetch or parse financial data.",
+    valuationRisk: "medium",
+    valuationRationale: "Unknown due to error.",
+    estimated: true
+  };
+}

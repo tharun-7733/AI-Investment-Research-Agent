@@ -1,110 +1,162 @@
-// Node: Synthesis & Scoring Engine
-// Acts as a VC partner synthesizing all research into weighted scores and rationales.
-
-import { State } from "../state";
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
+import { AgentState, DimensionScores, SynthesisRationales } from "../types";
 
-const getLLM = () => new ChatGoogleGenerativeAI({ model: "gemini-2.0-flash", temperature: 0.1 });
+export const synthesisNode = async (state: AgentState): Promise<Partial<AgentState>> => {
+  const companyInfo = state.companyInfo;
+  
+  if (!companyInfo?.name) {
+    return {
+      streamLog: ["❌ Error: No company name available for Synthesis Node."],
+      scores: getEmptyScores(),
+      synthesis: getEmptySynthesis()
+    };
+  }
 
-export const synthesisEngine = async (state: State): Promise<Partial<State>> => {
-  const llm = getLLM();
-  const resolvedName = state.companyInfo?.name || state.companyInput;
+  const resolvedName = companyInfo.name;
+  
+  const webSentimentScore = state.webAnalysis?.sentimentScore ?? 5;
+  const financialHealthScore = state.financialAnalysis?.financialHealthScore ?? 5;
+  const competitiveScore = state.competitiveAnalysis?.competitiveScore ?? 5;
+  const redFlags = state.webAnalysis?.redFlags?.join(", ") || "None found";
+  const moatType = state.competitiveAnalysis?.moatType || "none";
+  const moatStrength = state.competitiveAnalysis?.moatStrength ?? 5;
+  const valuationRisk = state.financialAnalysis?.valuationRisk || "unknown";
+  const keyDevelopments = state.webAnalysis?.keyDevelopments?.join(", ") || "None found";
 
-  const companyInfo = `Sector: ${state.companyInfo?.sector}, Industry: ${state.companyInfo?.industry}, Founded: ${state.companyInfo?.founded}. ${state.companyInfo?.description}`;
-  const webAnalysis = `Sentiment: ${state.webAnalysis?.sentiment}. ${state.webAnalysis?.sourceSummary}`;
-  const financialAnalysis = `Health Score: ${state.financialAnalysis?.financialHealthScore}. Rationale: ${state.financialAnalysis?.financialHealthRationale}. Valuation Risk: ${state.financialAnalysis?.valuationRisk}.`;
-  const competitiveAnalysis = `Position: ${state.competitiveAnalysis?.marketPosition}. Moat: ${state.competitiveAnalysis?.moatType}. Competitors: ${(state.competitiveAnalysis?.mainCompetitors || []).join(", ")}. ${state.competitiveAnalysis?.moatRationale}`;
+  try {
+    const model = new ChatGoogleGenerativeAI({
+      model: "gemini-2.5-flash",
+      temperature: 0,
+      maxOutputTokens: 800,
+    });
 
-  const prompt = `Synthesis & Scoring Engine:
+    const systemPrompt = "You are a partner at a top-tier investment firm.\nReturn ONLY valid JSON, no markdown.";
+    const userPrompt = `Score ${resolvedName} across 5 investment dimensions.
+  
+  Research data:
+  - Web sentiment score: ${webSentimentScore}/10
+  - Financial health score: ${financialHealthScore}/10
+  - Competitive score: ${competitiveScore}/10
+  - Red flags: ${redFlags}
+  - Moat: ${moatType} 
+    strength ${moatStrength}/10
+  - Valuation risk: ${valuationRisk}
+  - Key developments: ${keyDevelopments}
+  
+  Score each dimension 1-10 strictly based on data above.
+  Then calculate weightedTotal using:
+  Growth×0.25 + Moat×0.20 + FinancialHealth×0.25 + 
+  Sentiment×0.15 + Valuation×0.15
+  
+  Return this exact JSON:
+  {
+    "scores": {
+      "growth": number,
+      "moat": number,
+      "financialHealth": number,
+      "sentiment": number,
+      "valuation": number,
+      "weightedTotal": number
+    },
+    "growthRationale": "string",
+    "moatRationale": "string",
+    "financialHealthRationale": "string",
+    "sentimentRationale": "string",
+    "valuationRationale": "string",
+    "keyStrengths": ["string"],
+    "keyRisks": ["string"]
+  }`;
 
-You are a partner at a top-tier venture capital / equity research firm. You have completed research on ${resolvedName}. Synthesize all findings into a final investment score.
+    const response = await model.invoke([
+      { role: "system", content: systemPrompt },
+      { role: "user", content: userPrompt }
+    ]);
 
-Research Package:
-- Company Info: ${companyInfo}
-- Web Sentiment: ${webAnalysis}
-- Financials: ${financialAnalysis}
-- Competitive Intel: ${competitiveAnalysis}
+    const content = typeof response.content === 'string' 
+      ? response.content 
+      : (Array.isArray(response.content) && response.content.length > 0 && 'text' in response.content[0]) 
+        ? String((response.content[0] as any).text) 
+        : '';
+        
+    const jsonStr = content.replace(/```json\n?/, '').replace(/```\n?$/, '').trim();
+    
+    let parsedResult: any;
+    try {
+      parsedResult = JSON.parse(jsonStr);
+    } catch (e) {
+      console.error("[SynthesisNode] Failed to parse JSON:", e);
+      parsedResult = { scores: getEmptyScores() };
+    }
 
-Score each dimension from 1–10 using the rubric below, then compute a weighted total.
+    const rawScores = parsedResult.scores || getEmptyScores();
+    const s_growth = typeof rawScores.growth === 'number' ? rawScores.growth : 5;
+    const s_moat = typeof rawScores.moat === 'number' ? rawScores.moat : 5;
+    const s_fin = typeof rawScores.financialHealth === 'number' ? rawScores.financialHealth : 5;
+    const s_sent = typeof rawScores.sentiment === 'number' ? rawScores.sentiment : 5;
+    const s_val = typeof rawScores.valuation === 'number' ? rawScores.valuation : 5;
 
-Rubric:
-- Growth (25%): Revenue growth rate, market expansion, user/revenue trajectory
-- Moat (20%): Competitive defensibility, switching costs, network effects
-- Financial Health (25%): Margins, debt, cash, sustainability
-- Market Sentiment (15%): News tone, analyst consensus, public perception
-- Valuation (15%): Price vs. intrinsic value, risk-adjusted return potential
+    const calculated = (
+      s_growth * 0.25 +
+      s_moat * 0.20 +
+      s_fin * 0.25 +
+      s_sent * 0.15 +
+      s_val * 0.15
+    );
 
-Return ONLY a JSON object:
-{
-  "scores": {
-    "growth": <1-10>,
-    "moat": <1-10>,
-    "financialHealth": <1-10>,
-    "sentiment": <1-10>,
-    "valuation": <1-10>
-  },
-  "weightedTotal": <calculated 1-10, two decimal places>,
-  "growthRationale": "1-2 sentences",
-  "moatRationale": "1-2 sentences",
-  "financialHealthRationale": "1-2 sentences",
-  "sentimentRationale": "1-2 sentences",
-  "valuationRationale": "1-2 sentences",
-  "keyStrengths": ["strength 1", "strength 2", "strength 3"],
-  "keyRisks": ["risk 1", "risk 2", "risk 3"]
+    const scores: DimensionScores = {
+      growth: s_growth,
+      moat: s_moat,
+      financialHealth: s_fin,
+      sentiment: s_sent,
+      valuation: s_val,
+      weightedTotal: Number(calculated.toFixed(2))
+    };
+
+    const synthesis: SynthesisRationales = {
+      growthRationale: parsedResult.growthRationale || "No rationale provided",
+      moatRationale: parsedResult.moatRationale || "No rationale provided",
+      financialHealthRationale: parsedResult.financialHealthRationale || "No rationale provided",
+      sentimentRationale: parsedResult.sentimentRationale || "No rationale provided",
+      valuationRationale: parsedResult.valuationRationale || "No rationale provided",
+      keyStrengths: Array.isArray(parsedResult.keyStrengths) ? parsedResult.keyStrengths : [],
+      keyRisks: Array.isArray(parsedResult.keyRisks) ? parsedResult.keyRisks : [],
+    };
+
+    return {
+      scores,
+      synthesis,
+      streamLog: [`✅ Score: ${scores.weightedTotal}/10`]
+    };
+
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    return {
+      streamLog: [`❌ Error in Synthesis Node: ${errorMessage}`],
+      scores: getEmptyScores(),
+      synthesis: getEmptySynthesis()
+    };
+  }
+};
+
+function getEmptyScores(): DimensionScores {
+  return {
+    growth: 5,
+    moat: 5,
+    financialHealth: 5,
+    sentiment: 5,
+    valuation: 5,
+    weightedTotal: 5.00
+  };
 }
 
-No markdown. Be rigorous — a score of 7+ must be genuinely justified.`;
-
-  const raw = await llm.invoke(prompt);
-  const rawText = typeof raw.content === "string" ? raw.content : JSON.stringify(raw.content);
-
-  let result: any = {};
-  try {
-    const cleaned = rawText.trim().replace(/^```json|```$/g, "").trim();
-    result = JSON.parse(cleaned);
-  } catch {
-    const match = rawText.match(/\{[\s\S]*\}/);
-    if (match) result = JSON.parse(match[0]);
-  }
-
-  const scores = result.scores || {};
-  const growthScore = scores.growth || state.scores?.growth || 5;
-  const moatScore = scores.moat || state.scores?.moat || 5;
-  const financialHealthScore = scores.financialHealth || state.scores?.financialHealth || 5;
-  const sentimentScore = scores.sentiment || state.scores?.sentiment || 5;
-  const valuationScore = scores.valuation || state.scores?.valuation || 5;
-
-  let synthesisScore = result.weightedTotal;
-  if (typeof synthesisScore !== "number") {
-    synthesisScore =
-      growthScore * 0.25 +
-      moatScore * 0.20 +
-      financialHealthScore * 0.25 +
-      sentimentScore * 0.15 +
-      valuationScore * 0.15;
-  }
-
+function getEmptySynthesis(): SynthesisRationales {
   return {
-    synthesis: {
-      growthRationale: result.growthRationale || "",
-      moatRationale: result.moatRationale || "",
-      financialHealthRationale: result.financialHealthRationale || "",
-      sentimentRationale: result.sentimentRationale || "",
-      valuationRationale: result.valuationRationale || "",
-      keyStrengths: result.keyStrengths || [],
-      keyRisks: result.keyRisks || [],
-    },
-    scores: {
-      growth: growthScore,
-      moat: moatScore,
-      financialHealth: financialHealthScore,
-      sentiment: sentimentScore,
-      valuation: valuationScore,
-      weightedTotal: synthesisScore,
-    },
-    streamLog: [
-      `✅ Synthesis Complete - Final Score: ${synthesisScore.toFixed(2)}/10`,
-      `   (Growth: ${growthScore}, Moat: ${moatScore}, Health: ${financialHealthScore}, Sentiment: ${sentimentScore}, Val: ${valuationScore})`,
-    ],
+    growthRationale: "Failed to evaluate",
+    moatRationale: "Failed to evaluate",
+    financialHealthRationale: "Failed to evaluate",
+    sentimentRationale: "Failed to evaluate",
+    valuationRationale: "Failed to evaluate",
+    keyStrengths: [],
+    keyRisks: []
   };
-};
+}

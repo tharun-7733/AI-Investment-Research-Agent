@@ -1,72 +1,90 @@
-// Node: Competitive Intelligence Analyst
-// Analyzes market position, moat, competitors, and TAM.
-
-import { State } from "../state";
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
+import { AgentState, CompetitiveAnalysis } from "../types";
 
-const getLLM = () => new ChatGoogleGenerativeAI({ model: "gemini-2.0-flash", temperature: 0.1 });
-
-export const competitiveIntel = async (state: State): Promise<Partial<State>> => {
-  const llm = getLLM();
-  const resolvedName = state.companyInfo?.name || state.companyInput;
-  const industry = state.companyInfo?.industry || state.companyInfo?.sector || "Unknown Industry";
-  const webSearchSummary = state.webAnalysis?.sourceSummary || "No web context available.";
-
-  const prompt = `Competitive Intelligence Analyst:
-
-You are a strategy consultant specializing in competitive analysis. Analyze ${resolvedName} in the context of its industry: ${industry}.
-
-Use this context:
-${webSearchSummary}
-
-Return ONLY a JSON object:
-{
-  "mainCompetitors": ["competitor1", "competitor2", "competitor3"],
-  "marketPosition": "leader | challenger | niche | emerging",
-  "moatType": "brand | network_effects | cost_advantage | switching_costs | IP | none",
-  "moatStrength": <1-10>,
-  "moatRationale": "2-3 sentences explaining the moat score",
-  "differentiators": ["point 1", "point 2"],
-  "threats": ["threat 1", "threat 2"],
-  "marketSizeTAM": "<estimated TAM or null>",
-  "competitiveScore": <1-10>
-}
-
-No markdown. Base answers on available data; note uncertainty where it exists.`;
-
-  const raw = await llm.invoke(prompt);
-  const rawText = typeof raw.content === "string" ? raw.content : JSON.stringify(raw.content);
-
-  let result: any = {};
-  try {
-    const cleaned = rawText.trim().replace(/^```json|```$/g, "").trim();
-    result = JSON.parse(cleaned);
-  } catch {
-    const match = rawText.match(/\{[\s\S]*\}/);
-    if (match) result = JSON.parse(match[0]);
+export const competitiveNode = async (state: AgentState): Promise<Partial<AgentState>> => {
+  const companyInfo = state.companyInfo;
+  
+  if (!companyInfo?.name) {
+    return {
+      streamLog: ["❌ Error: No company name available for Competitive Node."],
+      competitiveAnalysis: getEmptyAnalysis()
+    };
   }
 
-  const moatScore = result.moatStrength || result.competitiveScore || 5;
-  const competitiveScore = result.competitiveScore || moatScore;
+  const resolvedName = companyInfo.name;
+  const industry = companyInfo.industry || "their sector";
+  const webSummary = state.webAnalysis?.sourceSummary || "No web search summary available. Use general knowledge about the company.";
+  const recentEvents = state.webAnalysis?.recentEvents?.length 
+    ? state.webAnalysis.recentEvents.join(", ") 
+    : "No recent events from search.";
 
-  return {
-    competitiveAnalysis: {
-      mainCompetitors: result.mainCompetitors || [],
-      marketPosition: result.marketPosition || "unknown",
-      moatType: result.moatType || "none",
-      moatStrength: moatScore,
-      moatRationale: result.moatRationale || "",
-      differentiators: result.differentiators || [],
-      threats: result.threats || [],
-      marketSizeTAM: result.marketSizeTAM || null,
-      competitiveScore,
-    },
-    scores: {
-      moat: moatScore,
-    },
-    streamLog: [
-      `✅ Competitive Intel Complete - Score: ${competitiveScore}/10, Position: ${result.marketPosition || "unknown"}, Moat: ${result.moatType || "none"}`,
-      `   Competitors: ${(result.mainCompetitors || []).join(", ") || "N/A"}`,
-    ],
-  };
+  try {
+    const model = new ChatGoogleGenerativeAI({
+      model: "gemini-2.5-flash",
+      temperature: 0,
+      maxOutputTokens: 600,
+    });
+
+    const systemPrompt = "You are a strategy consultant specializing in competitive analysis.\nReturn ONLY valid JSON, no markdown.";
+    const userPrompt = `Analyze the competitive position of ${resolvedName} in the ${industry} industry.\n\nContext from web research:\n${webSummary}\nRecent events: ${recentEvents}\n\nReturn this exact JSON:\n{\n  "mainCompetitors": ["string"], // (top 3-5)\n  "marketPosition": "leader"|"challenger"|"niche"|"emerging",\n  "moatType": "brand"|"network_effects"|"cost_advantage"|"switching_costs"|"IP"|"none",\n  "moatStrength": number (1-10),\n  "moatRationale": "string",\n  "differentiators": ["string"],\n  "threats": ["string"],\n  "marketSizeTAM": "string | null",\n  "competitiveScore": number (1-10)\n}\n\nBe specific. Use real competitor names.\nBase moat score strictly on evidence from context.`;
+
+    const response = await model.invoke([
+      { role: "system", content: systemPrompt },
+      { role: "user", content: userPrompt }
+    ]);
+
+    const content = typeof response.content === 'string' 
+      ? response.content 
+      : (Array.isArray(response.content) && response.content.length > 0 && 'text' in response.content[0]) 
+        ? String((response.content[0] as any).text) 
+        : '';
+        
+    const jsonStr = content.replace(/```json\n?/, '').replace(/```\n?$/, '').trim();
+    
+    let parsedResult: any;
+    try {
+      parsedResult = JSON.parse(jsonStr);
+    } catch (e) {
+      console.error("[CompetitiveNode] Failed to parse JSON:", e);
+      parsedResult = getEmptyAnalysis();
+    }
+    
+    const analysis: CompetitiveAnalysis = {
+      mainCompetitors: Array.isArray(parsedResult.mainCompetitors) ? parsedResult.mainCompetitors : [],
+      marketPosition: parsedResult.marketPosition || "challenger",
+      moatType: parsedResult.moatType || "none",
+      moatStrength: typeof parsedResult.moatStrength === 'number' ? parsedResult.moatStrength : 5,
+      moatRationale: parsedResult.moatRationale || "No data available.",
+      differentiators: Array.isArray(parsedResult.differentiators) ? parsedResult.differentiators : [],
+      threats: Array.isArray(parsedResult.threats) ? parsedResult.threats : [],
+      marketSizeTAM: parsedResult.marketSizeTAM || null,
+      competitiveScore: typeof parsedResult.competitiveScore === 'number' ? parsedResult.competitiveScore : 5
+    };
+
+    return {
+      competitiveAnalysis: analysis,
+      streamLog: [`✅ Competitive analysis done. \n  Moat: ${analysis.moatType} (${analysis.moatStrength}/10)`]
+    };
+
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    return {
+      streamLog: [`❌ Error in Competitive Node: ${errorMessage}`],
+      competitiveAnalysis: getEmptyAnalysis()
+    };
+  }
 };
+
+function getEmptyAnalysis(): CompetitiveAnalysis {
+  return {
+    mainCompetitors: [],
+    marketPosition: "challenger",
+    moatType: "none",
+    moatStrength: 5,
+    moatRationale: "Unknown due to error.",
+    differentiators: [],
+    threats: [],
+    marketSizeTAM: null,
+    competitiveScore: 5
+  };
+}

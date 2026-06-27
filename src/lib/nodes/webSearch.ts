@@ -1,111 +1,116 @@
-// Node: Web Search Agent
-// Runs 5 targeted searches via Tavily and synthesizes web intelligence.
-
-import { State } from "../state";
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
-import { z } from "zod";
-import { runMultipleSearches, TavilyResult } from "../tools/tavilySearch";
+import { AgentState } from "../types";
+import { runMultipleSearches } from "../tools/tavilySearch";
 
-const getLLM = () => new ChatGoogleGenerativeAI({ model: "gemini-2.0-flash", temperature: 0.1 });
+export const webSearchNode = async (state: AgentState): Promise<Partial<AgentState>> => {
+  const companyInfo = state.companyInfo;
+  const resolvedName = companyInfo?.name || state.companyInput || "the company";
+  const sector = companyInfo?.sector || "their sector";
 
-export const webSearchAgent = async (state: State): Promise<Partial<State>> => {
-  const llm = getLLM();
-  const name = state.companyInfo?.name || state.companyInput;
-  const ticker = state.companyInfo?.ticker ?? "N/A";
-  const sector = state.companyInfo?.sector ?? "Unknown";
-
-  // Step 1: Generate 5 targeted search queries via LLM
-  const queryGenPrompt = `You are a financial research analyst. Given a company, generate exactly 5 targeted web search queries to gather investment-relevant information.
-
-Company: ${name} (${ticker}, ${sector})
-
-Generate queries covering:
-1. Latest financial results or funding round
-2. Recent news (last 6 months)
-3. Competitive landscape and market position
-4. Leadership, controversies, or red flags
-5. Future outlook, expansion plans, or analyst ratings
-
-Return ONLY a JSON array of 5 strings. No markdown, no explanation.
-Example: ["query one", "query two", ...]`;
-
-  const queryGenRaw = await llm.invoke(queryGenPrompt);
-  const queryGenText =
-    typeof queryGenRaw.content === "string" ? queryGenRaw.content : JSON.stringify(queryGenRaw.content);
-
-  let queries: string[] = [];
   try {
-    const cleaned = queryGenText.trim().replace(/^```json|```$/g, "").trim();
-    queries = JSON.parse(cleaned);
-  } catch {
-    const match = queryGenText.match(/\[[\s\S]*\]/);
-    if (match) queries = JSON.parse(match[0]);
+    // Step 1 — Generate search queries
+    const queryModel = new ChatGoogleGenerativeAI({
+      model: "gemini-2.5-flash",
+      temperature: 0,
+    });
+
+    const systemPrompt1 = "You are a financial research analyst.\nReturn ONLY a JSON array of 5 strings. \nNo markdown, no explanation.";
+    const userPrompt1 = `Generate 5 targeted investment research \nsearch queries for: ${resolvedName} in ${sector}.\nCover: latest financials or funding, recent news, \ncompetitors, leadership or controversies, \nfuture outlook.`;
+
+    const queryResponse = await queryModel.invoke([
+      { role: "system", content: systemPrompt1 },
+      { role: "user", content: userPrompt1 }
+    ]);
+
+    const queryContent = typeof queryResponse.content === 'string' 
+      ? queryResponse.content 
+      : (Array.isArray(queryResponse.content) && queryResponse.content.length > 0 && 'text' in queryResponse.content[0]) 
+        ? String((queryResponse.content[0] as any).text) 
+        : '';
+        
+    const queryJsonStr = queryContent.replace(/```json\n?/, '').replace(/```\n?$/, '').trim();
+    
+    let queries: string[] = [];
+    try {
+      queries = JSON.parse(queryJsonStr);
+      if (!Array.isArray(queries)) {
+        queries = [];
+      }
+    } catch (e) {
+      console.error("[WebSearchNode] Failed to parse queries:", e);
+    }
+
+    // Step 2 — Run searches
+    let searchResultsStr = "";
+    if (queries.length > 0) {
+      const searchResults = await runMultipleSearches(queries);
+      if (searchResults.length > 0) {
+        searchResultsStr = searchResults
+          .map(r => `Title: ${r.title}\nURL: ${r.url}\nContent: ${r.content}`)
+          .join("\n\n---\n\n");
+      }
+    }
+
+    if (!searchResultsStr) {
+      searchResultsStr = "No search results found.";
+    }
+
+    // Step 3 — Synthesize results
+    const synthModel = new ChatGoogleGenerativeAI({
+      model: "gemini-2.5-flash",
+      temperature: 0,
+    });
+
+    const systemPrompt2 = "You are a senior equity research analyst.\nReturn ONLY valid JSON, no markdown.";
+    const userPrompt2 = `Analyze these search results about ${resolvedName}:\n${searchResultsStr}\n\nReturn this exact JSON:\n{\n  "keyDevelopments": ["string"],\n  "sentiment": "positive" | "neutral" | "negative",\n  "sentimentScore": number (1-10),\n  "redFlags": ["string"],\n  "tailwinds": ["string"],\n  "recentEvents": ["string"],\n  "sourceSummary": "string"\n}\nIf data is missing use null for that field.`;
+
+    const synthResponse = await synthModel.invoke([
+      { role: "system", content: systemPrompt2 },
+      { role: "user", content: userPrompt2 }
+    ]);
+
+    const synthContent = typeof synthResponse.content === 'string' 
+      ? synthResponse.content 
+      : (Array.isArray(synthResponse.content) && synthResponse.content.length > 0 && 'text' in synthResponse.content[0]) 
+        ? String((synthResponse.content[0] as any).text) 
+        : '';
+
+    const synthJsonStr = synthContent.replace(/```json\n?/, '').replace(/```\n?$/, '').trim();
+    
+    let parsedResult;
+    try {
+      parsedResult = JSON.parse(synthJsonStr);
+    } catch (e) {
+      console.error("[WebSearchNode] Failed to parse synthesis:", e);
+      parsedResult = {
+        keyDevelopments: null,
+        sentiment: "neutral",
+        sentimentScore: 5,
+        redFlags: null,
+        tailwinds: null,
+        recentEvents: null,
+        sourceSummary: null
+      };
+    }
+
+    // Step 4
+    const sentiment = parsedResult.sentiment ?? 'neutral';
+    const score = parsedResult.sentimentScore ?? 5;
+    
+    return {
+      webAnalysis: parsedResult,
+      streamLog: [`✅ Web research complete. \n  Sentiment: ${sentiment} (${score}/10)`]
+    };
+
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    return {
+      streamLog: [`❌ Error in Web Search Node: ${errorMessage}`],
+      // Never throw, always return partial state
+      webAnalysis: {
+        sentiment: "neutral",
+        sentimentScore: 5,
+      }
+    };
   }
-
-  if (!Array.isArray(queries) || queries.length === 0) {
-    queries = [
-      `${name} latest financial results`,
-      `${name} news 2024 2025`,
-      `${name} competitors market share`,
-      `${name} CEO controversies red flags`,
-      `${name} expansion analyst outlook`,
-    ];
-  }
-
-  // Step 2: Run all searches in parallel, deduplicated by URL
-  const results: TavilyResult[] = await runMultipleSearches(queries, 5);
-
-  const combinedResults = results
-    .map((r) => `[${r.title}](${r.url})\n${r.content}`)
-    .join("\n\n---\n\n");
-
-  // Step 3: Synthesize with structured output
-  const schema = z.object({
-    keyDevelopments: z.array(z.string()).describe("Key recent developments (3 bullets)"),
-    sentiment: z.enum(["positive", "neutral", "negative"]).describe("Overall investment sentiment"),
-    sentimentScore: z.number().min(1).max(10).describe("Sentiment score 1-10"),
-    redFlags: z.array(z.string()).describe("Red flags or risks. Empty array if none."),
-    tailwinds: z.array(z.string()).describe("Growth catalysts. Empty array if none."),
-    recentEvents: z.array(z.string()).describe("Notable recent events"),
-    sourceSummary: z.string().describe("2-sentence summary of what the web reveals"),
-  });
-
-  const structuredLlm = llm.withStructuredOutput(schema);
-  const synthesisPrompt = `You are a senior equity research analyst. Below are raw web search results about ${name}.
-
-Search Results:
-${combinedResults.substring(0, 6000)}
-
-Extract and return a structured analysis with:
-- keyDevelopments: 3 key bullet points
-- sentiment: "positive", "neutral", or "negative"
-- sentimentScore: 1-10
-- redFlags: any controversies, risks, or warning signs (empty array if none)
-- tailwinds: positive growth catalysts (empty array if none)
-- recentEvents: notable recent events
-- sourceSummary: 2-sentence summary of what the web reveals right now
-
-Be factual. If data is missing, use an empty array or note data unavailable.`;
-
-  const result = await structuredLlm.invoke(synthesisPrompt);
-
-  return {
-    webAnalysis: {
-      sentimentScore: result.sentimentScore,
-      sentiment: result.sentiment,
-      keyDevelopments: result.keyDevelopments,
-      redFlags: result.redFlags,
-      tailwinds: result.tailwinds,
-      recentEvents: result.recentEvents,
-      sourceSummary: result.sourceSummary,
-    },
-    scores: {
-      sentiment: result.sentimentScore,
-    },
-    streamLog: [
-      `✅ Web Search Complete — ${queries.length} queries, sentiment: ${result.sentiment} (${result.sentimentScore}/10)`,
-      `   Key Developments: ${result.keyDevelopments.length} | Red Flags: ${result.redFlags.length} | Tailwinds: ${result.tailwinds.length}`,
-      `   Queries: ${queries.map((q, i) => `\n     ${i + 1}. ${q}`).join("")}`,
-    ],
-  };
 };
