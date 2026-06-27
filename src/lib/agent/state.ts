@@ -65,6 +65,12 @@ export const GraphState = Annotation.Root({
   // Final Outputs
   synthesisScore: Annotation<number>(),
   verdict: Annotation<"INVEST" | "WATCH" | "PASS">(),
+  confidence: Annotation<number>(),
+  timeHorizon: Annotation<string>(),
+  headline: Annotation<string>(),
+  investThesis: Annotation<string>(),
+  watchFor: Annotation<string[]>(),
+  comparableTo: Annotation<string>(),
   report: Annotation<string>(),
   
   // Traces for UI
