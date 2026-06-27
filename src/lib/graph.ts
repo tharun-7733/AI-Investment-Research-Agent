@@ -1,6 +1,8 @@
 import { StateGraph, START, END } from "@langchain/langgraph";
 import { GraphState } from "./state";
-import { companyIdentifier } from "./nodes/identifier";
+import { AgentState } from "./types";
+
+import { identifierNode } from "./nodes/identifier";
 import { webSearchNode } from "./nodes/webSearch";
 import { financialsNode } from "./nodes/financials";
 import { competitiveNode } from "./nodes/competitive";
@@ -9,29 +11,57 @@ import { decisionNode } from "./nodes/decision";
 import { reporterNode } from "./nodes/reporter";
 
 const builder = new StateGraph(GraphState)
-  .addNode("companyIdentifier", companyIdentifier)
-  .addNode("webSearchAgent", webSearchNode)
-  .addNode("financialAnalyst", financialsNode)
-  .addNode("competitiveIntel", competitiveNode)
-  .addNode("synthesisEngine", synthesisNode)
-  .addNode("decisionNode", decisionNode)
-  .addNode("reportGenerator", reporterNode)
-
-  // Define flow
-  .addEdge(START, "companyIdentifier")
+  .addNode("identifier", identifierNode)
+  .addNode("webSearch", webSearchNode)
+  .addNode("financials", financialsNode)
+  .addNode("competitive", competitiveNode)
+  .addNode("synthesis", synthesisNode)
+  .addNode("decision", decisionNode)
+  .addNode("reporter", reporterNode)
   
-  // Parallel execution of research nodes
-  .addEdge("companyIdentifier", "webSearchAgent")
-  .addEdge("companyIdentifier", "financialAnalyst")
-  .addEdge("companyIdentifier", "competitiveIntel")
+  .addEdge(START, "identifier")
+  
+  // Fan-out to parallel research nodes
+  .addEdge("identifier", "webSearch")
+  .addEdge("identifier", "financials")
+  .addEdge("identifier", "competitive")
+  
+  // Fan-in: wait for all 3 before synthesis
+  .addEdge("webSearch", "synthesis")
+  .addEdge("financials", "synthesis")
+  .addEdge("competitive", "synthesis")
+  
+  .addEdge("synthesis", "decision")
+  .addEdge("decision", "reporter")
+  .addEdge("reporter", END);
 
-  // Wait for all 3 to finish before synthesis
-  .addEdge("webSearchAgent", "synthesisEngine")
-  .addEdge("financialAnalyst", "synthesisEngine")
-  .addEdge("competitiveIntel", "synthesisEngine")
+export const investmentGraph = builder.compile();
 
-  .addEdge("synthesisEngine", "decisionNode")
-  .addEdge("decisionNode", "reportGenerator")
-  .addEdge("reportGenerator", END);
-
-export const graph = builder.compile();
+export const runInvestmentAgent = async (
+  companyName: string,
+  onStream?: (streamLog: string[]) => void
+): Promise<AgentState> => {
+  try {
+    const stream = await investmentGraph.stream(
+      { companyInput: companyName },
+      { streamMode: "values" }
+    );
+    
+    let finalState: any = {};
+    
+    for await (const state of stream) {
+      finalState = state;
+      if (onStream && state.streamLog) {
+        onStream(state.streamLog);
+      }
+    }
+    
+    return finalState as AgentState;
+  } catch (error) {
+    console.error("[Graph] Fatal Execution Error:", error);
+    return {
+      error: error instanceof Error ? error.message : String(error),
+      streamLog: [`❌ Fatal Graph Error: ${String(error)}`]
+    } as unknown as AgentState;
+  }
+};

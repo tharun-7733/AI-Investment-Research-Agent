@@ -1,7 +1,7 @@
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
 import { AgentState } from "../types";
 
-export const companyIdentifier = async (state: AgentState): Promise<Partial<AgentState>> => {
+export const identifierNode = async (state: AgentState): Promise<Partial<AgentState>> => {
   const companyInput = state.companyInput;
   if (!companyInput) {
     return {

@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { graph } from "@/lib/graph";
+import { investmentGraph } from "@/lib/graph";
 
 export async function POST(req: NextRequest) {
   const { companyName } = await req.json();
@@ -11,7 +11,7 @@ export async function POST(req: NextRequest) {
   const stream = new ReadableStream({
     async start(controller) {
       try {
-        const streamResponse = await graph.streamEvents(
+        const streamResponse = await investmentGraph.streamEvents(
           { companyInput: companyName },
           { version: "v2" }
         );
