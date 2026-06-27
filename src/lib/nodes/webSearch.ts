@@ -4,7 +4,7 @@
 import { State } from "../state";
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
 import { z } from "zod";
-import { tavilySearch } from "../tools/tavilySearch";
+import { runMultipleSearches, TavilyResult } from "../tools/tavilySearch";
 
 const getLLM = () => new ChatGoogleGenerativeAI({ model: "gemini-2.0-flash", temperature: 0.1 });
 
@@ -52,13 +52,11 @@ Example: ["query one", "query two", ...]`;
     ];
   }
 
-  // Step 2: Run all 5 searches in parallel
-  const searchResults = await Promise.all(
-    queries.map((q) => tavilySearch(q).catch(() => "No results found."))
-  );
+  // Step 2: Run all searches in parallel, deduplicated by URL
+  const results: TavilyResult[] = await runMultipleSearches(queries, 5);
 
-  const combinedResults = queries
-    .map((q, i) => `Query: ${q}\nResult: ${searchResults[i]}`)
+  const combinedResults = results
+    .map((r) => `[${r.title}](${r.url})\n${r.content}`)
     .join("\n\n---\n\n");
 
   // Step 3: Synthesize with structured output
