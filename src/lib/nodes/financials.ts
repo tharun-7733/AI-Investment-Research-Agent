@@ -1,7 +1,7 @@
 // Node: Financial Analyst (CFA-level)
 // Fetches Alpha Vantage data and runs financial analysis via LLM.
 
-import { State } from "../agent/state";
+import { State } from "../state";
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
 import { alphaVantageOverview, alphaVantageIncomeStatement } from "../tools/alphaVantage";
 
@@ -11,16 +11,17 @@ export const financialAnalyst = async (state: State): Promise<Partial<State>> =>
   let overview = "No financial data found.";
   let income = "No income statement found.";
 
-  if (state.isPublic && state.ticker) {
-    overview = await alphaVantageOverview(state.ticker);
-    income = await alphaVantageIncomeStatement(state.ticker);
+  if (state.companyInfo?.isPublic && state.companyInfo?.ticker) {
+    overview = await alphaVantageOverview(state.companyInfo.ticker);
+    income = await alphaVantageIncomeStatement(state.companyInfo.ticker);
   }
 
   const llm = getLLM();
   const financialData = `Overview Data:\n${overview.substring(0, 2000)}\n\nIncome Statement Data:\n${income.substring(0, 2000)}`;
 
+  const name = state.companyInfo?.name || state.companyInput;
   const prompt = `Financial Analyst:
-You are a CFA-level financial analyst. Analyze the following financial data for ${state.resolvedName || state.companyName}.
+You are a CFA-level financial analyst. Analyze the following financial data for ${name}.
 
 Financial Data:
 ${financialData}
@@ -73,24 +74,27 @@ No markdown, no extra text.`;
   }
 
   return {
-    revenueGrowthYoY: result.revenueGrowthYoY || null,
-    grossMargin: result.grossMargin || null,
-    netMargin: result.netMargin || null,
-    debtToEquity: result.debtToEquity || null,
-    peRatio: result.peRatio || null,
-    marketCap: result.marketCap || null,
-    cashPosition: result.cashPosition || null,
-    burnRate: result.burnRate || null,
-    financialHealthScore: result.financialHealthScore || 5,
-    financialHealthRationale: result.financialHealthRationale || "",
-    valuationRisk: result.valuationRisk || "medium",
-    valuationRationale: result.valuationRationale || "",
-    valuationScore,
-    growthScore,
-    financialContext: result.financialHealthRationale
-      ? `${result.financialHealthRationale} ${result.valuationRationale || ""}`
-      : "Financial data processed.",
-    logs: [
+    financialAnalysis: {
+      revenueGrowthYoY: result.revenueGrowthYoY || null,
+      grossMargin: result.grossMargin || null,
+      netMargin: result.netMargin || null,
+      debtToEquity: result.debtToEquity || null,
+      peRatio: result.peRatio || null,
+      marketCap: result.marketCap || null,
+      cashPosition: result.cashPosition || null,
+      burnRate: result.burnRate || null,
+      financialHealthScore: result.financialHealthScore || 5,
+      financialHealthRationale: result.financialHealthRationale || "",
+      valuationRisk: result.valuationRisk || "medium",
+      valuationRationale: result.valuationRationale || "",
+      estimated: result.estimated || false,
+    },
+    scores: {
+      financialHealth: result.financialHealthScore || 5,
+      valuation: valuationScore,
+      growth: growthScore,
+    },
+    streamLog: [
       `✅ Financial Analysis Complete - Health: ${result.financialHealthScore || 5}/10, Valuation Risk: ${result.valuationRisk || "N/A"}`,
     ],
   };

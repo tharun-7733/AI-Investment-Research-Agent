@@ -1,7 +1,7 @@
 // Node: Web Search Agent
 // Runs 5 targeted searches via Tavily and synthesizes web intelligence.
 
-import { State } from "../agent/state";
+import { State } from "../state";
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
 import { z } from "zod";
 import { tavilySearch } from "../tools/tavilySearch";
@@ -10,9 +10,9 @@ const getLLM = () => new ChatGoogleGenerativeAI({ model: "gemini-2.0-flash", tem
 
 export const webSearchAgent = async (state: State): Promise<Partial<State>> => {
   const llm = getLLM();
-  const name = state.resolvedName || state.companyName;
-  const ticker = state.ticker ?? "N/A";
-  const sector = state.sector ?? "Unknown";
+  const name = state.companyInfo?.name || state.companyInput;
+  const ticker = state.companyInfo?.ticker ?? "N/A";
+  const sector = state.companyInfo?.sector ?? "Unknown";
 
   // Step 1: Generate 5 targeted search queries via LLM
   const queryGenPrompt = `You are a financial research analyst. Given a company, generate exactly 5 targeted web search queries to gather investment-relevant information.
@@ -92,15 +92,19 @@ Be factual. If data is missing, use an empty array or note data unavailable.`;
   const result = await structuredLlm.invoke(synthesisPrompt);
 
   return {
-    sentimentScore: result.sentimentScore,
-    sentiment: result.sentiment,
-    keyDevelopments: result.keyDevelopments,
-    redFlags: result.redFlags,
-    tailwinds: result.tailwinds,
-    recentEvents: result.recentEvents,
-    sourceSummary: result.sourceSummary,
-    webSearchContext: result.sourceSummary,
-    logs: [
+    webAnalysis: {
+      sentimentScore: result.sentimentScore,
+      sentiment: result.sentiment,
+      keyDevelopments: result.keyDevelopments,
+      redFlags: result.redFlags,
+      tailwinds: result.tailwinds,
+      recentEvents: result.recentEvents,
+      sourceSummary: result.sourceSummary,
+    },
+    scores: {
+      sentiment: result.sentimentScore,
+    },
+    streamLog: [
       `✅ Web Search Complete — ${queries.length} queries, sentiment: ${result.sentiment} (${result.sentimentScore}/10)`,
       `   Key Developments: ${result.keyDevelopments.length} | Red Flags: ${result.redFlags.length} | Tailwinds: ${result.tailwinds.length}`,
       `   Queries: ${queries.map((q, i) => `\n     ${i + 1}. ${q}`).join("")}`,

@@ -1,25 +1,25 @@
 // Node: Investment Decision
 // Final investment committee verdict: INVEST | WATCH | PASS.
 
-import { State } from "../agent/state";
+import { State } from "../state";
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
 
 const getLLM = () => new ChatGoogleGenerativeAI({ model: "gemini-2.0-flash", temperature: 0.1 });
 
 export const decisionNode = async (state: State): Promise<Partial<State>> => {
   const llm = getLLM();
-  const resolvedName = state.resolvedName || state.companyName;
-  const weightedTotal = state.synthesisScore || 5;
+  const resolvedName = state.companyInfo?.name || state.companyInput;
+  const weightedTotal = state.scores?.weightedTotal || 5;
 
   const scoresObj = JSON.stringify({
-    growth: state.growthScore,
-    moat: state.moatScore,
-    financialHealth: state.financialHealthScore,
-    sentiment: state.sentimentScore,
-    valuation: state.valuationScore,
+    growth: state.scores?.growth,
+    moat: state.scores?.moat,
+    financialHealth: state.scores?.financialHealth,
+    sentiment: state.scores?.sentiment,
+    valuation: state.scores?.valuation,
   });
-  const keyStrengths = JSON.stringify(state.keyStrengths || []);
-  const keyRisks = JSON.stringify(state.keyRisks || []);
+  const keyStrengths = JSON.stringify(state.synthesis?.keyStrengths || []);
+  const keyRisks = JSON.stringify(state.synthesis?.keyRisks || []);
 
   const prompt = `Investment Decision Node:
 
@@ -77,7 +77,7 @@ No markdown. The verdict must be defensible from the score data.`;
     investThesis: result.investThesis || "",
     watchFor: Array.isArray(result.watchFor) ? result.watchFor : [],
     comparableTo: result.comparableTo || "",
-    logs: [
+    streamLog: [
       `✅ Decision Made - Verdict: ${verdict} (Confidence: ${result.confidence || 50}%)`,
       `   Headline: ${result.headline || "N/A"}`,
     ],

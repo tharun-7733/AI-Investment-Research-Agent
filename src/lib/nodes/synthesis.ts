@@ -1,19 +1,19 @@
 // Node: Synthesis & Scoring Engine
 // Acts as a VC partner synthesizing all research into weighted scores and rationales.
 
-import { State } from "../agent/state";
+import { State } from "../state";
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
 
 const getLLM = () => new ChatGoogleGenerativeAI({ model: "gemini-2.0-flash", temperature: 0.1 });
 
 export const synthesisEngine = async (state: State): Promise<Partial<State>> => {
   const llm = getLLM();
-  const resolvedName = state.resolvedName || state.companyName;
+  const resolvedName = state.companyInfo?.name || state.companyInput;
 
-  const companyInfo = `Sector: ${state.sector}, Industry: ${state.industry}, Founded: ${state.founded}. ${state.companyDescription}`;
-  const webAnalysis = `Sentiment: ${state.sentiment}. ${state.sourceSummary}`;
-  const financialAnalysis = `Health Score: ${state.financialHealthScore}. Rationale: ${state.financialHealthRationale}. Valuation Risk: ${state.valuationRisk}.`;
-  const competitiveAnalysis = `Position: ${state.marketPosition}. Moat: ${state.moatType}. Competitors: ${(state.mainCompetitors || []).join(", ")}. ${state.moatRationale}`;
+  const companyInfo = `Sector: ${state.companyInfo?.sector}, Industry: ${state.companyInfo?.industry}, Founded: ${state.companyInfo?.founded}. ${state.companyInfo?.description}`;
+  const webAnalysis = `Sentiment: ${state.webAnalysis?.sentiment}. ${state.webAnalysis?.sourceSummary}`;
+  const financialAnalysis = `Health Score: ${state.financialAnalysis?.financialHealthScore}. Rationale: ${state.financialAnalysis?.financialHealthRationale}. Valuation Risk: ${state.financialAnalysis?.valuationRisk}.`;
+  const competitiveAnalysis = `Position: ${state.competitiveAnalysis?.marketPosition}. Moat: ${state.competitiveAnalysis?.moatType}. Competitors: ${(state.competitiveAnalysis?.mainCompetitors || []).join(", ")}. ${state.competitiveAnalysis?.moatRationale}`;
 
   const prompt = `Synthesis & Scoring Engine:
 
@@ -68,11 +68,11 @@ No markdown. Be rigorous — a score of 7+ must be genuinely justified.`;
   }
 
   const scores = result.scores || {};
-  const growthScore = scores.growth || state.growthScore || 5;
-  const moatScore = scores.moat || state.moatScore || 5;
-  const financialHealthScore = scores.financialHealth || state.financialHealthScore || 5;
-  const sentimentScore = scores.sentiment || state.sentimentScore || 5;
-  const valuationScore = scores.valuation || state.valuationScore || 5;
+  const growthScore = scores.growth || state.scores?.growth || 5;
+  const moatScore = scores.moat || state.scores?.moat || 5;
+  const financialHealthScore = scores.financialHealth || state.scores?.financialHealth || 5;
+  const sentimentScore = scores.sentiment || state.scores?.sentiment || 5;
+  const valuationScore = scores.valuation || state.scores?.valuation || 5;
 
   let synthesisScore = result.weightedTotal;
   if (typeof synthesisScore !== "number") {
@@ -85,20 +85,24 @@ No markdown. Be rigorous — a score of 7+ must be genuinely justified.`;
   }
 
   return {
-    growthScore,
-    moatScore,
-    financialHealthScore,
-    sentimentScore,
-    valuationScore,
-    synthesisScore,
-    synthesisGrowthRationale: result.growthRationale || "",
-    synthesisMoatRationale: result.moatRationale || "",
-    synthesisFinancialHealthRationale: result.financialHealthRationale || "",
-    synthesisSentimentRationale: result.sentimentRationale || "",
-    synthesisValuationRationale: result.valuationRationale || "",
-    keyStrengths: result.keyStrengths || [],
-    keyRisks: result.keyRisks || [],
-    logs: [
+    synthesis: {
+      growthRationale: result.growthRationale || "",
+      moatRationale: result.moatRationale || "",
+      financialHealthRationale: result.financialHealthRationale || "",
+      sentimentRationale: result.sentimentRationale || "",
+      valuationRationale: result.valuationRationale || "",
+      keyStrengths: result.keyStrengths || [],
+      keyRisks: result.keyRisks || [],
+    },
+    scores: {
+      growth: growthScore,
+      moat: moatScore,
+      financialHealth: financialHealthScore,
+      sentiment: sentimentScore,
+      valuation: valuationScore,
+      weightedTotal: synthesisScore,
+    },
+    streamLog: [
       `✅ Synthesis Complete - Final Score: ${synthesisScore.toFixed(2)}/10`,
       `   (Growth: ${growthScore}, Moat: ${moatScore}, Health: ${financialHealthScore}, Sentiment: ${sentimentScore}, Val: ${valuationScore})`,
     ],

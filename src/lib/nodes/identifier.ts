@@ -1,7 +1,7 @@
 // Node: Company Identifier
 // Resolves a user-supplied company name into structured company info.
 
-import { State } from "../agent/state";
+import { State } from "../state";
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
 
 const getLLM = () => new ChatGoogleGenerativeAI({ model: "gemini-2.0-flash", temperature: 0.1 });
@@ -11,7 +11,7 @@ export const companyIdentifier = async (state: State): Promise<Partial<State>> =
 
   const prompt = `You are a financial data resolver. Given a company name, extract and return ONLY a JSON object with no markdown, no explanation.
 
-Input: "${state.companyName}"
+Input: "${state.companyInput}"
 
 Return this exact structure:
 {
@@ -60,16 +60,18 @@ Rules:
   const exchange = result.exchange && result.exchange !== "null" ? result.exchange : null;
 
   return {
-    resolvedName: result.resolvedName ?? state.companyName,
-    ticker,
-    exchange,
-    country: result.country ?? "Unknown",
-    sector: result.sector ?? "Unknown",
-    industry: result.industry ?? "Unknown",
-    isPublic: result.isPublic ?? false,
-    founded: result.founded ?? null,
-    companyDescription: result.description ?? "",
-    logs: [
+    companyInfo: {
+      name: result.resolvedName ?? state.companyInput,
+      ticker,
+      exchange,
+      country: result.country ?? "Unknown",
+      sector: result.sector ?? "Unknown",
+      industry: result.industry ?? "Unknown",
+      isPublic: result.isPublic ?? false,
+      founded: result.founded ?? null,
+      description: result.description ?? "",
+    },
+    streamLog: [
       `✅ Identified: ${result.resolvedName} (${ticker ?? "PRIVATE"})`,
       `   Exchange: ${exchange ?? "N/A"} | Sector: ${result.sector} | Industry: ${result.industry}`,
       `   HQ: ${result.country} | Founded: ${result.founded ?? "Unknown"} | Public: ${result.isPublic}`,

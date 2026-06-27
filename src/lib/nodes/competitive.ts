@@ -1,16 +1,16 @@
 // Node: Competitive Intelligence Analyst
 // Analyzes market position, moat, competitors, and TAM.
 
-import { State } from "../agent/state";
+import { State } from "../state";
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
 
 const getLLM = () => new ChatGoogleGenerativeAI({ model: "gemini-2.0-flash", temperature: 0.1 });
 
 export const competitiveIntel = async (state: State): Promise<Partial<State>> => {
   const llm = getLLM();
-  const resolvedName = state.resolvedName || state.companyName;
-  const industry = state.industry || state.sector || "Unknown Industry";
-  const webSearchSummary = state.sourceSummary || state.webSearchContext || "No web context available.";
+  const resolvedName = state.companyInfo?.name || state.companyInput;
+  const industry = state.companyInfo?.industry || state.companyInfo?.sector || "Unknown Industry";
+  const webSearchSummary = state.webAnalysis?.sourceSummary || "No web context available.";
 
   const prompt = `Competitive Intelligence Analyst:
 
@@ -50,19 +50,21 @@ No markdown. Base answers on available data; note uncertainty where it exists.`;
   const competitiveScore = result.competitiveScore || moatScore;
 
   return {
-    mainCompetitors: result.mainCompetitors || [],
-    marketPosition: result.marketPosition || "unknown",
-    moatType: result.moatType || "none",
-    moatScore,
-    moatRationale: result.moatRationale || "",
-    differentiators: result.differentiators || [],
-    threats: result.threats || [],
-    marketSizeTAM: result.marketSizeTAM || null,
-    competitiveScore,
-    competitiveContext: result.moatRationale
-      ? `${result.moatRationale} Market position: ${result.marketPosition}. Moat type: ${result.moatType}.`
-      : "Competitive analysis processed.",
-    logs: [
+    competitiveAnalysis: {
+      mainCompetitors: result.mainCompetitors || [],
+      marketPosition: result.marketPosition || "unknown",
+      moatType: result.moatType || "none",
+      moatStrength: moatScore,
+      moatRationale: result.moatRationale || "",
+      differentiators: result.differentiators || [],
+      threats: result.threats || [],
+      marketSizeTAM: result.marketSizeTAM || null,
+      competitiveScore,
+    },
+    scores: {
+      moat: moatScore,
+    },
+    streamLog: [
       `✅ Competitive Intel Complete - Score: ${competitiveScore}/10, Position: ${result.marketPosition || "unknown"}, Moat: ${result.moatType || "none"}`,
       `   Competitors: ${(result.mainCompetitors || []).join(", ") || "N/A"}`,
     ],

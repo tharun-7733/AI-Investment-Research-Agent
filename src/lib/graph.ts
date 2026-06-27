@@ -1,14 +1,12 @@
 import { StateGraph, START, END } from "@langchain/langgraph";
 import { GraphState } from "./state";
-import { 
-  companyIdentifier, 
-  webSearchAgent, 
-  financialAnalyst, 
-  competitiveIntel, 
-  synthesisEngine, 
-  decisionNode, 
-  reportGenerator 
-} from "./nodes";
+import { companyIdentifier } from "./nodes/identifier";
+import { webSearchAgent } from "./nodes/webSearch";
+import { financialAnalyst } from "./nodes/financials";
+import { competitiveIntel } from "./nodes/competitive";
+import { synthesisEngine } from "./nodes/synthesis";
+import { decisionNode } from "./nodes/decision";
+import { reportGenerator } from "./nodes/reporter";
 
 const builder = new StateGraph(GraphState)
   .addNode("companyIdentifier", companyIdentifier)

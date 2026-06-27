@@ -1,45 +1,27 @@
 // Node: Report Generator
 // Produces a structured client-facing markdown investment brief.
 
-import { State } from "../agent/state";
+import { State } from "../state";
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
 
 const getLLM = () => new ChatGoogleGenerativeAI({ model: "gemini-2.0-flash", temperature: 0.1 });
 
 export const reportGenerator = async (state: State): Promise<Partial<State>> => {
   const llm = getLLM();
-  const resolvedName = state.resolvedName || state.companyName;
+  const resolvedName = state.companyInfo?.name || state.companyInput;
   const date = new Date().toISOString().split("T")[0];
 
   const fullResearchPackage = JSON.stringify(
     {
-      companyInfo: {
-        sector: state.sector,
-        industry: state.industry,
-        description: state.companyDescription,
-        founded: state.founded,
-        country: state.country,
-      },
+      companyInfo: state.companyInfo,
       synthesis: {
-        synthesisScore: state.synthesisScore,
+        synthesisScore: state.scores?.weightedTotal,
         investThesis: state.investThesis,
         watchFor: state.watchFor,
         comparableTo: state.comparableTo,
-        keyStrengths: state.keyStrengths,
-        keyRisks: state.keyRisks,
-        growthRationale: state.synthesisGrowthRationale,
-        moatRationale: state.synthesisMoatRationale,
-        financialHealthRationale: state.synthesisFinancialHealthRationale,
-        sentimentRationale: state.synthesisSentimentRationale,
-        valuationRationale: state.synthesisValuationRationale,
+        ...state.synthesis
       },
-      scores: {
-        growth: state.growthScore,
-        moat: state.moatScore,
-        financialHealth: state.financialHealthScore,
-        sentiment: state.sentimentScore,
-        valuation: state.valuationScore,
-      },
+      scores: state.scores,
     },
     null,
     2
@@ -100,6 +82,6 @@ Write in a professional but direct tone. No fluff. Every sentence must add infor
 
   return {
     report: result.content as string,
-    logs: [`✅ Report Generated`],
+    streamLog: [`✅ Report Generated`],
   };
 };
