@@ -13,11 +13,10 @@ export function Navbar({ isAnalyzing, hasResults }: NavbarProps) {
   useEffect(() => {
     const handleScroll = () => {
       if (navRef.current) {
-        if (window.scrollY > 10) {
-          navRef.current.style.borderColor = "rgba(255,255,255,0.08)";
-        } else {
-          navRef.current.style.borderColor = "rgba(255,255,255,0.04)";
-        }
+        navRef.current.style.borderBottomColor =
+          window.scrollY > 10
+            ? "rgba(69, 71, 75, 0.6)"
+            : "rgba(69, 71, 75, 0.3)";
       }
     };
     window.addEventListener("scroll", handleScroll);
@@ -33,105 +32,183 @@ export function Navbar({ isAnalyzing, hasResults }: NavbarProps) {
         left: 0,
         right: 0,
         zIndex: 100,
-        height: "60px",
+        height: "64px",
         display: "flex",
         alignItems: "center",
         justifyContent: "space-between",
-        padding: "0 32px",
-        background: "rgba(4, 6, 15, 0.75)",
-        backdropFilter: "blur(20px) saturate(160%)",
-        WebkitBackdropFilter: "blur(20px) saturate(160%)",
-        borderBottom: "1px solid rgba(255,255,255,0.04)",
+        padding: "0 64px",
+        background: "rgba(18, 20, 20, 0.85)",
+        backdropFilter: "blur(16px) saturate(160%)",
+        WebkitBackdropFilter: "blur(16px) saturate(160%)",
+        borderBottom: "1px solid rgba(69, 71, 75, 0.3)",
         transition: "border-color 0.3s ease",
       }}
     >
-      {/* Logo */}
-      <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-        <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
-          <svg width="26" height="26" viewBox="0 0 26 26" fill="none">
-            <polygon
-              points="13,2 24,8 24,18 13,24 2,18 2,8"
-              stroke="#00E5A0"
-              strokeWidth="1.5"
-              fill="none"
-            />
-            <polygon
-              points="13,7 19,10.5 19,17.5 13,21 7,17.5 7,10.5"
-              fill="rgba(0,229,160,0.12)"
-              stroke="rgba(0,229,160,0.4)"
-              strokeWidth="1"
-            />
-          </svg>
-          {/* Animated status dot */}
-          <span
-            style={{
-              position: "absolute",
-              top: "-2px",
-              right: "-2px",
-              width: "7px",
-              height: "7px",
-              borderRadius: "50%",
-              background: isAnalyzing ? "#F5C842" : "#00E5A0",
-              boxShadow: isAnalyzing
-                ? "0 0 8px rgba(245,200,66,0.8)"
-                : "0 0 8px rgba(0,229,160,0.8)",
-              animation: "pulse-dot 2s infinite",
-            }}
-          />
-        </div>
-        <span
+      {/* Left: Logo + Nav Links */}
+      <div style={{ display: "flex", alignItems: "center", gap: "48px" }}>
+        {/* Logo */}
+        <a
+          href="#"
           style={{
-            fontFamily: "'Syne', sans-serif",
-            fontWeight: 800,
-            fontSize: "16px",
-            letterSpacing: "-0.02em",
-            color: "#fff",
+            fontFamily: "'Playfair Display', serif",
+            fontWeight: 700,
+            fontSize: "20px",
+            letterSpacing: "-0.01em",
+            color: "#e2e2e2",
+            textDecoration: "none",
+            whiteSpace: "nowrap",
           }}
         >
-          AlphaSignal
-        </span>
+          EQUITY ANALYTICA
+        </a>
+
+        {/* Nav Links */}
+        <div
+          className="nav-links"
+          style={{ display: "flex", gap: "32px", alignItems: "center" }}
+        >
+          <a
+            href="#"
+            style={{
+              fontFamily: "'Inter', sans-serif",
+              fontWeight: 600,
+              fontSize: "12px",
+              letterSpacing: "0.08em",
+              textTransform: "uppercase",
+              color: "#c6c6cc",
+              textDecoration: "none",
+              borderBottom: "2px solid #dac769",
+              paddingBottom: "4px",
+            }}
+          >
+            Terminal
+          </a>
+          <a
+            href="#"
+            style={{
+              fontFamily: "'Inter', sans-serif",
+              fontWeight: 600,
+              fontSize: "12px",
+              letterSpacing: "0.08em",
+              textTransform: "uppercase",
+              color: "#c6c6cb",
+              textDecoration: "none",
+              transition: "color 0.2s ease",
+            }}
+            onMouseEnter={(e) => ((e.currentTarget as HTMLAnchorElement).style.color = "#e2e2e2")}
+            onMouseLeave={(e) => ((e.currentTarget as HTMLAnchorElement).style.color = "#c6c6cb")}
+          >
+            Intelligence
+          </a>
+          <a
+            href="#"
+            style={{
+              fontFamily: "'Inter', sans-serif",
+              fontWeight: 600,
+              fontSize: "12px",
+              letterSpacing: "0.08em",
+              textTransform: "uppercase",
+              color: "#c6c6cb",
+              textDecoration: "none",
+              transition: "color 0.2s ease",
+            }}
+            onMouseEnter={(e) => ((e.currentTarget as HTMLAnchorElement).style.color = "#e2e2e2")}
+            onMouseLeave={(e) => ((e.currentTarget as HTMLAnchorElement).style.color = "#c6c6cb")}
+          >
+            Portfolio
+          </a>
+        </div>
       </div>
 
-      {/* Right side status pills */}
-      <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-        <StatusPill
-          label={isAnalyzing ? "Analyzing..." : hasResults ? "Complete" : "Ready"}
-          color={isAnalyzing ? "#F5C842" : hasResults ? "#00E5A0" : "#A8B0C2"}
-        />
-        <StatusPill label="Gemini 2.5 Flash" color="#5EA8FF" />
-        <StatusPill label="7 Nodes" color="#A8B0C2" />
+      {/* Right: Status Pills + Icons */}
+      <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+        {/* Status Pill */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "6px",
+            padding: "4px 12px",
+            borderRadius: "999px",
+            background: "rgba(255,255,255,0.04)",
+            border: "1px solid rgba(255,255,255,0.07)",
+            fontSize: "11px",
+            fontFamily: "'JetBrains Mono', monospace",
+            color: isAnalyzing ? "#dac769" : hasResults ? "#a8cfbd" : "#c6c6cb",
+            letterSpacing: "0.04em",
+          }}
+        >
+          <span
+            style={{
+              width: "5px",
+              height: "5px",
+              borderRadius: "50%",
+              background: isAnalyzing ? "#dac769" : hasResults ? "#a8cfbd" : "#909095",
+              flexShrink: 0,
+              boxShadow: isAnalyzing ? "0 0 8px rgba(218,199,105,0.8)" : "none",
+            }}
+          />
+          {isAnalyzing ? "Analyzing..." : hasResults ? "Complete" : "Ready"}
+        </div>
+
+        {/* Notifications icon */}
+        <button
+          aria-label="Notifications"
+          style={{
+            background: "none",
+            border: "none",
+            cursor: "pointer",
+            padding: "8px",
+            borderRadius: "4px",
+            color: "#c6c6cb",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            transition: "color 0.2s ease, background 0.2s ease",
+          }}
+          onMouseEnter={(e) => {
+            (e.currentTarget as HTMLButtonElement).style.color = "#e2e2e2";
+            (e.currentTarget as HTMLButtonElement).style.background = "rgba(40,42,43,0.5)";
+          }}
+          onMouseLeave={(e) => {
+            (e.currentTarget as HTMLButtonElement).style.color = "#c6c6cb";
+            (e.currentTarget as HTMLButtonElement).style.background = "none";
+          }}
+        >
+          <span className="material-symbols-outlined" style={{ fontSize: "22px", fontVariationSettings: "'FILL' 0" }}>
+            notifications
+          </span>
+        </button>
+
+        {/* Account icon */}
+        <button
+          aria-label="Account"
+          style={{
+            background: "none",
+            border: "none",
+            cursor: "pointer",
+            padding: "8px",
+            borderRadius: "4px",
+            color: "#c6c6cb",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            transition: "color 0.2s ease, background 0.2s ease",
+          }}
+          onMouseEnter={(e) => {
+            (e.currentTarget as HTMLButtonElement).style.color = "#e2e2e2";
+            (e.currentTarget as HTMLButtonElement).style.background = "rgba(40,42,43,0.5)";
+          }}
+          onMouseLeave={(e) => {
+            (e.currentTarget as HTMLButtonElement).style.color = "#c6c6cb";
+            (e.currentTarget as HTMLButtonElement).style.background = "none";
+          }}
+        >
+          <span className="material-symbols-outlined" style={{ fontSize: "22px", fontVariationSettings: "'FILL' 0" }}>
+            account_circle
+          </span>
+        </button>
       </div>
     </nav>
-  );
-}
-
-function StatusPill({ label, color }: { label: string; color: string }) {
-  return (
-    <div
-      style={{
-        display: "flex",
-        alignItems: "center",
-        gap: "6px",
-        padding: "4px 10px",
-        borderRadius: "999px",
-        background: "rgba(255,255,255,0.04)",
-        border: "1px solid rgba(255,255,255,0.06)",
-        fontSize: "11px",
-        fontFamily: "'DM Mono', monospace",
-        color: "#A8B0C2",
-        letterSpacing: "0.01em",
-      }}
-    >
-      <span
-        style={{
-          width: "5px",
-          height: "5px",
-          borderRadius: "50%",
-          background: color,
-          flexShrink: 0,
-        }}
-      />
-      {label}
-    </div>
   );
 }

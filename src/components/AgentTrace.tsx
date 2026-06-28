@@ -1,16 +1,50 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { CheckCircle2, Circle, Loader2, Clock } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
 
 const PIPELINE_NODES = [
-  { id: "identifier",  label: "Company Identification",   desc: "Resolving company entity" },
-  { id: "webSearch",   label: "Web Research",             desc: "Searching recent news & events" },
-  { id: "financials",  label: "Financial Analysis",       desc: "Fetching & analyzing financials" },
-  { id: "competitive", label: "Competitive Intelligence", desc: "Mapping competitive landscape" },
-  { id: "synthesis",   label: "Synthesis & Scoring",      desc: "Calculating dimension scores" },
-  { id: "decision",    label: "Investment Decision",      desc: "Generating verdict" },
-  { id: "reporter",    label: "Report Generation",        desc: "Writing investment brief" },
+  {
+    id: "identifier",
+    label: "Entity Identification",
+    desc: "Resolving company entity and aliases",
+    keywords: ["identified", "identifying", "entity"],
+  },
+  {
+    id: "webSearch",
+    label: "Web Research & Sentiment",
+    desc: "Scanning institutional chatter and news",
+    keywords: ["web research", "search", "sentiment"],
+  },
+  {
+    id: "financials",
+    label: "Financial Extraction",
+    desc: "Parsing financial statements and data",
+    keywords: ["financials analyzed", "financial", "financ"],
+  },
+  {
+    id: "competitive",
+    label: "Competitive Intelligence",
+    desc: "Mapping competitive landscape and moat",
+    keywords: ["competitive", "compet"],
+  },
+  {
+    id: "synthesis",
+    label: "Synthesis & Scoring",
+    desc: "Calculating weighted dimension scores",
+    keywords: ["score", "synth", "scoring"],
+  },
+  {
+    id: "decision",
+    label: "Investment Decision",
+    desc: "Generating investment verdict",
+    keywords: ["verdict", "decision"],
+  },
+  {
+    id: "reporter",
+    label: "Report Generation",
+    desc: "Writing investment brief",
+    keywords: ["report"],
+  },
 ];
 
 type NodeStatus = "pending" | "running" | "done";
@@ -19,347 +53,578 @@ interface AgentTraceProps {
   logs: string[];
   isLoading: boolean;
   elapsedMs?: number;
+  companyName?: string;
+  onAbort?: () => void;
 }
 
-export function AgentTrace({ logs, isLoading, elapsedMs }: AgentTraceProps) {
+export function AgentTrace({
+  logs,
+  isLoading,
+  elapsedMs = 0,
+  companyName,
+  onAbort,
+}: AgentTraceProps) {
+  const logEndRef = useRef<HTMLDivElement>(null);
   const [nodeStatuses, setNodeStatuses] = useState<Record<string, NodeStatus>>(
-    Object.fromEntries(PIPELINE_NODES.map(n => [n.id, "pending"]))
+    Object.fromEntries(PIPELINE_NODES.map((n) => [n.id, "pending"]))
   );
-  const [nodeTimes, setNodeTimes] = useState<Record<string, number>>({});
-  const [startTimes, setStartTimes] = useState<Record<string, number>>({});
 
+  // Auto-scroll log to bottom on new entries
+  useEffect(() => {
+    logEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [logs]);
+
+  // Derive node statuses from log messages
   useEffect(() => {
     if (!logs || logs.length === 0) {
-      setNodeStatuses(Object.fromEntries(PIPELINE_NODES.map(n => [n.id, "pending"])));
-      setNodeTimes({});
-      setStartTimes({});
+      setNodeStatuses(Object.fromEntries(PIPELINE_NODES.map((n) => [n.id, "pending"])));
       return;
     }
 
     const updated: Record<string, NodeStatus> = Object.fromEntries(
-      PIPELINE_NODES.map(n => [n.id, "pending"])
+      PIPELINE_NODES.map((n) => [n.id, "pending"])
     );
-    const times: Record<string, number> = {};
 
-    // Infer node states from log messages
-    logs.forEach(log => {
+    logs.forEach((log) => {
       const l = log.toLowerCase();
-      if (l.includes("company identification") || l.includes("identifying")) {
-        updated.identifier = l.includes("✅") ? "done" : "running";
-      }
-      if (l.includes("web") || l.includes("search")) {
-        updated.webSearch = l.includes("✅") ? "done" : "running";
-      }
-      if (l.includes("financ")) {
-        updated.financials = l.includes("✅") ? "done" : "running";
-      }
-      if (l.includes("compet")) {
-        updated.competitive = l.includes("✅") ? "done" : "running";
-      }
-      if (l.includes("synth") || l.includes("score")) {
-        updated.synthesis = l.includes("✅") ? "done" : "running";
-      }
-      if (l.includes("verdict") || l.includes("decision")) {
-        updated.decision = l.includes("✅") ? "done" : "running";
-      }
-      if (l.includes("report")) {
-        updated.reporter = l.includes("✅") ? "done" : "running";
+      for (const node of PIPELINE_NODES) {
+        if (node.keywords.some((kw) => l.includes(kw))) {
+          updated[node.id] = l.includes("✅") ? "done" : "running";
+        }
       }
     });
 
     setNodeStatuses(updated);
   }, [logs]);
 
-  const doneCount = Object.values(nodeStatuses).filter(s => s === "done").length;
-  const runningNode = PIPELINE_NODES.find(n => nodeStatuses[n.id] === "running");
+  const doneCount = Object.values(nodeStatuses).filter((s) => s === "done").length;
+  const progressPct = Math.round((doneCount / PIPELINE_NODES.length) * 100);
+
+  // Format elapsed time as MM:SS.ms
+  const totalSec = Math.floor(elapsedMs / 1000);
+  const mins = String(Math.floor(totalSec / 60)).padStart(2, "0");
+  const secs = String(totalSec % 60).padStart(2, "0");
+  const ms = String(Math.floor((elapsedMs % 1000) / 10)).padStart(2, "0");
+  const timeStr = `${mins}:${secs}.${ms}`;
 
   return (
     <div
-      className="glass"
       style={{
-        borderRadius: "20px",
-        padding: "28px 24px",
         display: "flex",
-        flexDirection: "column",
-        gap: "0",
+        width: "100%",
         height: "100%",
+        background: "#0A0C10",
+        overflow: "hidden",
       }}
     >
-      {/* Header */}
-      <div style={{ marginBottom: "24px" }}>
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "6px" }}>
-          <span
+      {/* ── Global Progress Bar (thin, top of workspace) ── */}
+      <div
+        style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          right: 0,
+          height: "2px",
+          background: "rgba(51,53,53,0.8)",
+          zIndex: 40,
+        }}
+      >
+        <div
+          style={{
+            height: "100%",
+            width: `${progressPct}%`,
+            background: "#dac769",
+            boxShadow: "0 0 10px rgba(218,199,105,0.5)",
+            transition: "width 0.8s ease-out",
+          }}
+        />
+      </div>
+
+      {/* ─────────────────────────────────────────────────────────────── */}
+      {/* LEFT SIDEBAR — Agent Pipeline                                   */}
+      {/* ─────────────────────────────────────────────────────────────── */}
+      <aside
+        style={{
+          width: "320px",
+          flexShrink: 0,
+          background: "#0c0f0f",
+          borderRight: "1px solid rgba(69,71,75,0.3)",
+          display: "flex",
+          flexDirection: "column",
+          height: "100%",
+          overflow: "hidden",
+        }}
+      >
+        {/* Session header */}
+        <div
+          style={{
+            padding: "32px",
+            borderBottom: "1px solid rgba(69,71,75,0.3)",
+          }}
+        >
+          <div
             style={{
-              fontFamily: "'DM Mono', monospace",
-              fontSize: "10px",
-              letterSpacing: "0.12em",
-              color: "#606880",
+              fontFamily: "'Inter', sans-serif",
+              fontWeight: 600,
+              fontSize: "12px",
+              letterSpacing: "0.08em",
               textTransform: "uppercase",
+              color: "#c6c6cb",
+              marginBottom: "8px",
             }}
           >
-            Agent Pipeline
-          </span>
-          {isLoading && (
-            <span
+            Active Session
+          </div>
+          <div
+            style={{
+              fontFamily: "'Playfair Display', serif",
+              fontWeight: 600,
+              fontSize: "22px",
+              lineHeight: "28px",
+              color: "#e2e2e2",
+            }}
+          >
+            {companyName || "Research in Progress"}
+          </div>
+
+          {/* Progress row */}
+          <div
+            style={{
+              marginTop: "12px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+            }}
+          >
+            <div
               style={{
                 display: "flex",
                 alignItems: "center",
-                gap: "5px",
-                fontFamily: "'DM Mono', monospace",
-                fontSize: "10px",
-                color: "#F5C842",
+                gap: "8px",
+                fontFamily: "'Inter', sans-serif",
+                fontSize: "14px",
+                color: isLoading ? "#dac769" : "#a8cfbd",
               }}
             >
-              <Loader2 size={10} style={{ animation: "spin-slow 1s linear infinite" }} />
-              LIVE
-            </span>
-          )}
-        </div>
+              <span
+                style={{
+                  width: "8px",
+                  height: "8px",
+                  borderRadius: "50%",
+                  background: isLoading ? "#dac769" : "#a8cfbd",
+                  animation: isLoading ? "pulse-dot 2s infinite" : "none",
+                  flexShrink: 0,
+                }}
+              />
+              {isLoading ? "Analysis in Progress" : "Analysis Complete"}
+            </div>
+            <div
+              style={{
+                fontFamily: "'JetBrains Mono', monospace",
+                fontSize: "11px",
+                color: "#909095",
+              }}
+            >
+              {doneCount}/{PIPELINE_NODES.length}
+            </div>
+          </div>
 
-        {/* Progress bar */}
-        <div
-          style={{
-            height: "3px",
-            background: "rgba(255,255,255,0.05)",
-            borderRadius: "999px",
-            overflow: "hidden",
-            marginTop: "8px",
-          }}
-        >
+          {/* Progress bar */}
           <div
             style={{
-              height: "100%",
-              width: `${(doneCount / PIPELINE_NODES.length) * 100}%`,
-              background: "linear-gradient(90deg, #00E5A0, #5EA8FF)",
+              marginTop: "10px",
+              height: "2px",
+              background: "rgba(69,71,75,0.4)",
               borderRadius: "999px",
-              transition: "width 0.6s ease",
+              overflow: "hidden",
             }}
-          />
+          >
+            <div
+              style={{
+                height: "100%",
+                width: `${progressPct}%`,
+                background: "#dac769",
+                boxShadow: "0 0 8px rgba(218,199,105,0.4)",
+                transition: "width 0.8s ease-out",
+                borderRadius: "999px",
+              }}
+            />
+          </div>
         </div>
+
+        {/* Pipeline steps list */}
         <div
           style={{
+            flex: 1,
+            overflowY: "auto",
+            padding: "32px",
+            display: "flex",
+            flexDirection: "column",
+            gap: "28px",
+          }}
+        >
+          {PIPELINE_NODES.map((node) => {
+            const status = nodeStatuses[node.id];
+            const isDone = status === "done";
+            const isRunning = status === "running";
+            return (
+              <PipelineStep
+                key={node.id}
+                label={node.label}
+                desc={node.desc}
+                status={status}
+                isDone={isDone}
+                isRunning={isRunning}
+              />
+            );
+          })}
+        </div>
+
+        {/* Abort button */}
+        <div
+          style={{
+            padding: "24px",
+            borderTop: "1px solid rgba(69,71,75,0.3)",
+          }}
+        >
+          <button
+            onClick={onAbort}
+            disabled={!isLoading}
+            style={{
+              width: "100%",
+              padding: "12px",
+              border: "1px solid rgba(69,71,75,0.5)",
+              background: "none",
+              color: "#e2e2e2",
+              fontFamily: "'Inter', sans-serif",
+              fontWeight: 600,
+              fontSize: "12px",
+              letterSpacing: "0.08em",
+              textTransform: "uppercase",
+              cursor: isLoading ? "pointer" : "not-allowed",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              gap: "8px",
+              transition: "border-color 0.2s ease",
+              opacity: isLoading ? 1 : 0.4,
+              borderRadius: "2px",
+            }}
+            onMouseEnter={(e) => {
+              if (isLoading)
+                (e.currentTarget as HTMLButtonElement).style.borderColor = "#dac769";
+            }}
+            onMouseLeave={(e) => {
+              (e.currentTarget as HTMLButtonElement).style.borderColor =
+                "rgba(69,71,75,0.5)";
+            }}
+          >
+            <span
+              className="material-symbols-outlined"
+              style={{ fontSize: "16px", fontVariationSettings: "'FILL' 0" }}
+            >
+              stop_circle
+            </span>
+            Abort Analysis
+          </button>
+        </div>
+      </aside>
+
+      {/* ─────────────────────────────────────────────────────────────── */}
+      {/* RIGHT PANEL — Live Intelligence Log                             */}
+      {/* ─────────────────────────────────────────────────────────────── */}
+      <section
+        style={{
+          flex: 1,
+          background: "#0A0C10",
+          display: "flex",
+          flexDirection: "column",
+          position: "relative",
+          overflow: "hidden",
+        }}
+      >
+        {/* Log header bar */}
+        <div
+          style={{
+            padding: "14px 32px",
+            borderBottom: "1px solid rgba(69,71,75,0.2)",
             display: "flex",
             justifyContent: "space-between",
-            marginTop: "6px",
-            fontFamily: "'DM Mono', monospace",
-            fontSize: "10px",
-            color: "#606880",
-          }}
-        >
-          <span>{doneCount}/{PIPELINE_NODES.length} nodes complete</span>
-          {elapsedMs != null && elapsedMs > 0 && (
-            <span style={{ display: "flex", alignItems: "center", gap: "4px" }}>
-              <Clock size={9} />
-              {(elapsedMs / 1000).toFixed(1)}s
-            </span>
-          )}
-        </div>
-      </div>
-
-      {/* Node list */}
-      <div style={{ display: "flex", flexDirection: "column", gap: "4px", flex: 1 }}>
-        {PIPELINE_NODES.map((node, i) => {
-          const status = nodeStatuses[node.id];
-          return (
-            <NodeRow
-              key={node.id}
-              label={node.label}
-              desc={node.desc}
-              status={status}
-              animDelay={i * 50}
-              isActive={runningNode?.id === node.id}
-            />
-          );
-        })}
-      </div>
-
-      {/* Log stream */}
-      {logs && logs.length > 0 && (
-        <div
-          style={{
-            marginTop: "20px",
-            borderTop: "1px solid rgba(255,255,255,0.05)",
-            paddingTop: "16px",
+            alignItems: "center",
+            background: "#161B22",
+            flexShrink: 0,
+            zIndex: 20,
           }}
         >
           <div
             style={{
-              fontFamily: "'DM Mono', monospace",
-              fontSize: "10px",
+              fontFamily: "'Inter', sans-serif",
+              fontWeight: 600,
+              fontSize: "12px",
               letterSpacing: "0.08em",
-              color: "#606880",
               textTransform: "uppercase",
-              marginBottom: "10px",
+              color: "#c6c6cb",
+              display: "flex",
+              alignItems: "center",
+              gap: "10px",
             }}
           >
-            Live Log
+            {isLoading && (
+              <span
+                style={{
+                  width: "6px",
+                  height: "6px",
+                  borderRadius: "50%",
+                  background: "#dac769",
+                  animation: "pulse-dot 1.5s infinite",
+                  flexShrink: 0,
+                }}
+              />
+            )}
+            Live Intelligence Log
           </div>
           <div
             style={{
-              maxHeight: "120px",
-              overflowY: "auto",
-              display: "flex",
-              flexDirection: "column",
-              gap: "4px",
+              fontFamily: "'JetBrains Mono', monospace",
+              fontWeight: 500,
+              fontSize: "13px",
+              letterSpacing: "-0.01em",
+              color: "#909095",
             }}
           >
-            {logs.slice(-8).map((log, i) => (
-              <div
-                key={i}
+            T: {timeStr}
+          </div>
+        </div>
+
+        {/* Log entries */}
+        <div
+          id="log-container"
+          style={{
+            flex: 1,
+            overflowY: "auto",
+            padding: "32px",
+            display: "flex",
+            flexDirection: "column",
+            gap: "10px",
+            paddingBottom: "80px",
+          }}
+        >
+          {logs.length === 0 ? (
+            <div
+              style={{
+                fontFamily: "'JetBrains Mono', monospace",
+                fontSize: "13px",
+                color: "#45474b",
+              }}
+            >
+              [SYS] Awaiting agent initialization...
+            </div>
+          ) : (
+            logs.map((log, i) => <LogLine key={i} log={log} isLatest={i === logs.length - 1} />)
+          )}
+          {/* Blinking cursor at the end */}
+          {isLoading && (
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "8px",
+                marginTop: "4px",
+              }}
+            >
+              <span
                 style={{
-                  fontFamily: "'DM Mono', monospace",
-                  fontSize: "10px",
-                  color: log.startsWith("✅")
-                    ? "#00E5A0"
-                    : log.startsWith("❌")
-                    ? "#FF5A6A"
-                    : "#606880",
-                  lineHeight: 1.5,
-                  opacity: i < logs.slice(-8).length - 1 ? 0.6 : 1,
+                  fontFamily: "'JetBrains Mono', monospace",
+                  fontSize: "13px",
+                  color: "#dac769",
                 }}
               >
-                {log}
-              </div>
-            ))}
-          </div>
+                ›
+              </span>
+              <span
+                style={{
+                  width: "8px",
+                  height: "16px",
+                  background: "#dac769",
+                  display: "inline-block",
+                  animation: "blink-cursor 1s step-end infinite",
+                  borderRadius: "1px",
+                }}
+              />
+            </div>
+          )}
+          <div ref={logEndRef} />
         </div>
-      )}
 
-      {/* Pipeline stats glass card */}
-      {doneCount > 0 && (
+        {/* Fade gradient at bottom */}
         <div
+          aria-hidden
           style={{
-            marginTop: "16px",
-            padding: "14px 16px",
-            background: "rgba(0,229,160,0.04)",
-            border: "1px solid rgba(0,229,160,0.1)",
-            borderRadius: "12px",
-            display: "grid",
-            gridTemplateColumns: "1fr 1fr",
-            gap: "10px 16px",
+            position: "absolute",
+            bottom: 0,
+            left: 0,
+            right: 0,
+            height: "80px",
+            background: "linear-gradient(to top, #0A0C10, transparent)",
+            pointerEvents: "none",
+            zIndex: 10,
           }}
-        >
-          <Stat label="Nodes Complete" value={`${doneCount}/${PIPELINE_NODES.length}`} />
-          <Stat label="Model" value="Gemini 2.5" />
-          <Stat label="Status" value={isLoading ? "Running" : "Done"} color={isLoading ? "#F5C842" : "#00E5A0"} />
-          {elapsedMs != null && <Stat label="Elapsed" value={`${(elapsedMs / 1000).toFixed(1)}s`} />}
-        </div>
-      )}
+        />
+      </section>
     </div>
   );
 }
 
-function NodeRow({
+/* ── Sub-components ────────────────────────────────────────────────────────── */
+
+function PipelineStep({
   label,
   desc,
-  status,
-  animDelay,
-  isActive,
+  isDone,
+  isRunning,
 }: {
   label: string;
   desc: string;
   status: NodeStatus;
-  animDelay: number;
-  isActive: boolean;
+  isDone: boolean;
+  isRunning: boolean;
 }) {
   return (
     <div
       style={{
         display: "flex",
-        alignItems: "center",
-        gap: "12px",
-        padding: "10px 12px",
-        borderRadius: "10px",
-        background: isActive
-          ? "rgba(245,200,66,0.05)"
-          : status === "done"
-          ? "rgba(0,229,160,0.04)"
-          : "transparent",
-        border: isActive
-          ? "1px solid rgba(245,200,66,0.15)"
-          : status === "done"
-          ? "1px solid rgba(0,229,160,0.1)"
-          : "1px solid transparent",
-        transition: "all 0.4s ease",
-        animationDelay: `${animDelay}ms`,
+        alignItems: "flex-start",
+        gap: "16px",
+        position: "relative",
+        opacity: isDone ? 0.5 : isRunning ? 1 : 0.3,
+        transition: "opacity 0.4s ease",
       }}
     >
-      {/* Status icon */}
-      <div style={{ flexShrink: 0 }}>
-        {status === "done" ? (
-          <CheckCircle2 size={16} color="#00E5A0" style={{ animation: "node-complete 0.4s ease" }} />
-        ) : status === "running" ? (
-          <Loader2
-            size={16}
-            color="#F5C842"
-            style={{ animation: "spin-slow 1s linear infinite" }}
-          />
+      {/* Active left accent bar */}
+      {isRunning && (
+        <div
+          style={{
+            position: "absolute",
+            left: "-32px",
+            top: "4px",
+            width: "3px",
+            height: "28px",
+            background: "#dac769",
+            borderRadius: "0 2px 2px 0",
+          }}
+        />
+      )}
+
+      {/* Icon / Status indicator */}
+      <div style={{ flexShrink: 0, marginTop: "2px" }}>
+        {isDone ? (
+          <span
+            className="material-symbols-outlined"
+            style={{
+              fontSize: "20px",
+              color: "#dac769",
+              fontVariationSettings: "'FILL' 1",
+            }}
+          >
+            check_circle
+          </span>
+        ) : isRunning ? (
+          <span
+            className="material-symbols-outlined"
+            style={{
+              fontSize: "20px",
+              color: "#dac769",
+              animation: "spin-slow 1.5s linear infinite",
+            }}
+          >
+            sync
+          </span>
         ) : (
-          <Circle size={16} color="rgba(255,255,255,0.12)" />
+          <div
+            style={{
+              width: "8px",
+              height: "8px",
+              borderRadius: "50%",
+              background: "#c6c6cb",
+              margin: "6px 6px",
+            }}
+          />
         )}
       </div>
 
-      {/* Label */}
+      {/* Text */}
       <div style={{ flex: 1, minWidth: 0 }}>
         <div
           style={{
             fontFamily: "'Inter', sans-serif",
-            fontSize: "12.5px",
-            fontWeight: 500,
-            color: status === "done"
-              ? "#fff"
-              : status === "running"
-              ? "#F5C842"
-              : "#A8B0C2",
-            lineHeight: 1.3,
+            fontWeight: 600,
+            fontSize: "15px",
+            lineHeight: "22px",
+            color: isRunning ? "#dac769" : "#e2e2e2",
             transition: "color 0.3s ease",
           }}
         >
           {label}
         </div>
-        {isActive && (
-          <div
-            style={{
-              fontFamily: "'DM Mono', monospace",
-              fontSize: "9px",
-              color: "rgba(245,200,66,0.7)",
-              marginTop: "2px",
-              letterSpacing: "0.02em",
-            }}
-          >
-            {desc}
-          </div>
-        )}
+        <div
+          style={{
+            fontFamily: "'Inter', sans-serif",
+            fontWeight: 600,
+            fontSize: "12px",
+            letterSpacing: "0.08em",
+            textTransform: "uppercase",
+            color: isRunning ? "#e2e2e2" : "#c6c6cb",
+            marginTop: "4px",
+            lineHeight: "16px",
+          }}
+        >
+          {desc}
+        </div>
       </div>
     </div>
   );
 }
 
-function Stat({ label, value, color }: { label: string; value: string; color?: string }) {
+function LogLine({ log, isLatest }: { log: string; isLatest: boolean }) {
+  const isSuccess = log.startsWith("✅");
+  const isError = log.startsWith("❌");
+  const isWarning = log.startsWith("⚠️");
+
+  let prefixColor = "#c6c6cb";
+  let textColor = "#c6c6cb";
+
+  if (isSuccess) {
+    prefixColor = "#a8cfbd";
+    textColor = "#a8cfbd";
+  } else if (isError) {
+    prefixColor = "#ffb4ab";
+    textColor = "#ffb4ab";
+  } else if (isWarning) {
+    prefixColor = "#dac769";
+    textColor = "#dac769";
+  } else if (isLatest) {
+    textColor = "#dac769";
+    prefixColor = "#dac769";
+  }
+
   return (
-    <div>
-      <div
-        style={{
-          fontFamily: "'DM Mono', monospace",
-          fontSize: "9px",
-          color: "#606880",
-          textTransform: "uppercase",
-          letterSpacing: "0.08em",
-          marginBottom: "2px",
-        }}
-      >
-        {label}
-      </div>
-      <div
-        style={{
-          fontFamily: "'DM Mono', monospace",
-          fontSize: "12px",
-          color: color || "#fff",
-          fontWeight: 500,
-        }}
-      >
-        {value}
-      </div>
+    <div
+      style={{
+        fontFamily: "'JetBrains Mono', monospace",
+        fontWeight: 500,
+        fontSize: "13px",
+        lineHeight: "20px",
+        letterSpacing: "-0.01em",
+        color: textColor,
+        opacity: isLatest ? 1 : 0.75,
+        transition: "opacity 0.3s ease",
+        display: "flex",
+        gap: "8px",
+        alignItems: "flex-start",
+      }}
+    >
+      <span style={{ color: prefixColor, flexShrink: 0 }}>›</span>
+      <span>{log}</span>
     </div>
   );
 }

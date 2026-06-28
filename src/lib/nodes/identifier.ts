@@ -1,5 +1,6 @@
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
 import { AgentState } from "../types";
+import { safeParseLlmJson, extractTextContent } from "../utils/parseJson";
 
 export const identifierNode = async (state: AgentState): Promise<Partial<AgentState>> => {
   const companyInput = state.companyInput;
@@ -11,13 +12,14 @@ export const identifierNode = async (state: AgentState): Promise<Partial<AgentSt
   }
 
   try {
-    const model = new ChatGoogleGenerativeAI({
-      model: "gemini-2.5-flash", // Good default for simple parsing tasks
+    const llm = new ChatGoogleGenerativeAI({
+      model: "gemini-2.5-flash",
       temperature: 0,
-      maxOutputTokens: 500,
+      maxOutputTokens: 1024,
     });
 
-    const systemPrompt = "You are a financial data resolver. Return ONLY valid JSON, no markdown, no explanation.";
+    const systemPrompt =
+      "You are a financial data resolver. Return ONLY valid JSON, no markdown, no explanation.";
     const userPrompt = `Given this company name: ${companyInput}
 Return this exact JSON:
 {
@@ -34,37 +36,38 @@ Return this exact JSON:
 If company not found return: { "error": "Not found" }
 ticker and exchange are null for private companies.`;
 
-    const response = await model.invoke([
+    const response = await llm.invoke([
       { role: "system", content: systemPrompt },
-      { role: "user", content: userPrompt }
+      { role: "user", content: userPrompt },
     ]);
 
-    const content = typeof response.content === 'string' ? response.content : (Array.isArray(response.content) && response.content.length > 0 && 'text' in response.content[0]) ? String((response.content[0] as any).text) : '';
-    
-    // Attempt to extract JSON if it was wrapped in markdown despite instructions
-    const match = content.match(/\{[\s\S]*\}/);
-    const jsonStr = match ? match[0] : content;
-    const parsedResult = JSON.parse(jsonStr);
+    const raw = extractTextContent(response.content);
+    const { data: parsedResult, error } = safeParseLlmJson(raw, "IdentifierNode");
 
-    if (parsedResult.error) {
+    if (error || !parsedResult) {
       return {
-        error: parsedResult.error,
-        streamLog: [`❌ Identifier Error: ${parsedResult.error}`],
+        error: `Failed to parse company data: ${error}`,
+        streamLog: [`❌ IdentifierNode parse error: ${error}`],
       };
     }
 
-    // Rename resolvedName to name to match the AgentState CompanyInfo type
-    const { resolvedName, ...rest } = parsedResult;
-    const companyInfo = {
-      name: resolvedName,
-      ...rest,
-    };
+    const result = parsedResult as Record<string, unknown>;
+
+    if (result.error) {
+      return {
+        error: String(result.error),
+        streamLog: [`❌ Identifier Error: ${result.error}`],
+      };
+    }
+
+    // Rename resolvedName → name to match AgentState CompanyInfo type
+    const { resolvedName, ...rest } = result;
+    const companyInfo = { name: resolvedName, ...rest };
 
     return {
-      companyInfo,
-      streamLog: [`✅ Identified: ${resolvedName} (${companyInfo.ticker ?? 'Private'})`],
+      companyInfo: companyInfo as AgentState["companyInfo"],
+      streamLog: [`✅ Identified: ${resolvedName} (${(companyInfo as any).ticker ?? "Private"})`],
     };
-
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     return {

@@ -1,4 +1,37 @@
-@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Inter:wght@300;400;500;600;700&family=DM+Mono:wght@300;400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Inter:wght@400;600&family=DM+Mono:wght@300;400;500&family=Playfair+Display:wght@600;700&family=JetBrains+Mono:wght@500&display=swap');
+
+/* ─── Material Symbols ──────────────────────────────────────────────────────── */
+.material-symbols-outlined {
+  font-family: 'Material Symbols Outlined';
+  font-weight: normal;
+  font-style: normal;
+  font-size: 24px;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  display: inline-block;
+  white-space: nowrap;
+  word-wrap: normal;
+  direction: ltr;
+  -webkit-font-feature-settings: 'liga';
+  font-feature-settings: 'liga';
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+}
+
+/* ─── New Design System Color Tokens ────────────────────────────────────────── */
+:root {
+  /* Equity Analytica dark palette */
+  --ea-bg:            #0A0C10;
+  --ea-bg-card:       #161B22;
+  --ea-bg-surface:    #1e2020;
+  --ea-gold:          #dac769;
+  --ea-gold-dim:      #C5B358;
+  --ea-text:          #e2e2e2;
+  --ea-text-muted:    #c6c6cb;
+  --ea-outline:       rgba(69, 71, 75, 0.3);
+  --ea-outline-hover: rgba(218, 199, 105, 0.5);
+}
 
 *, *::before, *::after {
   box-sizing: border-box;
@@ -75,6 +108,10 @@ body {
 @keyframes pulse-dot {
   0%, 100% { opacity: 1; transform: scale(1); }
   50% { opacity: 0.5; transform: scale(0.75); }
+}
+@keyframes blink-cursor {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0; }
 }
 @keyframes shimmer {
   0%   { background-position: -200% center; }

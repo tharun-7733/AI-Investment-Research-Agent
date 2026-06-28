@@ -3,8 +3,14 @@
 
 import { State } from "../state";
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
+import { safeParseLlmJson, extractTextContent } from "../utils/parseJson";
 
-const getLLM = () => new ChatGoogleGenerativeAI({ model: "gemini-2.0-flash", temperature: 0.1 });
+const getLLM = () =>
+  new ChatGoogleGenerativeAI({
+    model: "gemini-2.5-flash",
+    temperature: 0.2,
+    maxOutputTokens: 2048,
+  });
 
 export const decisionNode = async (state: State): Promise<Partial<State>> => {
   const llm = getLLM();
@@ -38,33 +44,30 @@ Decision thresholds:
 
 Return ONLY a JSON object:
 {
-  "verdict": "INVEST | WATCH | PASS",
-  "confidence": <50-99 integer, your confidence in this verdict>,
-  "timeHorizon": "short-term (< 1yr) | medium-term (1-3yr) | long-term (3yr+) | N/A",
-  "headline": "One punchy sentence summarizing the verdict (like a Bloomberg headline)",
-  "investThesis": "3-4 sentences: why this is or isn't a good investment RIGHT NOW",
-  "watchFor": ["trigger 1 to revisit", "trigger 2"] or [],
+  "verdict": "INVEST",
+  "confidence": 75,
+  "timeHorizon": "medium-term (1-3yr)",
+  "headline": "One punchy sentence summarizing the verdict",
+  "investThesis": "3-4 sentences explaining why this is or is not a good investment RIGHT NOW",
+  "watchFor": ["trigger 1 to revisit", "trigger 2"],
   "comparableTo": "This company is like [well-known comparable] because [reason]"
 }
 
-No markdown. The verdict must be defensible from the score data.`;
+No markdown. verdict must be one of: INVEST, WATCH, PASS. The verdict must be defensible from the score data.`;
 
   const raw = await llm.invoke(prompt);
-  const rawText = typeof raw.content === "string" ? raw.content : JSON.stringify(raw.content);
+  const rawText = extractTextContent(raw.content);
 
-  let result: any = {};
-  try {
-    const cleaned = rawText.trim().replace(/^```json|```$/g, "").trim();
-    result = JSON.parse(cleaned);
-  } catch {
-    const match = rawText.match(/\{[\s\S]*\}/);
-    if (match) {
-      result = JSON.parse(match[0]);
-    }
+  const { data: parsedResult, error } = safeParseLlmJson(rawText, "DecisionNode");
+
+  if (error) {
+    console.warn("[DecisionNode] Using fallback decision due to parse error.");
   }
 
+  const result = (parsedResult ?? {}) as Record<string, unknown>;
+
   const validVerdicts = ["INVEST", "WATCH", "PASS"];
-  let verdict = result.verdict?.toUpperCase();
+  let verdict = typeof result.verdict === "string" ? result.verdict.toUpperCase() : "";
   if (!validVerdicts.includes(verdict)) {
     if (weightedTotal >= 7) verdict = "INVEST";
     else if (weightedTotal >= 5.5) verdict = "WATCH";
@@ -73,15 +76,17 @@ No markdown. The verdict must be defensible from the score data.`;
 
   return {
     verdict: verdict as "INVEST" | "WATCH" | "PASS",
-    confidence: result.confidence || 50,
-    timeHorizon: result.timeHorizon || "N/A",
-    headline: result.headline || `${verdict} rating assigned based on score of ${weightedTotal.toFixed(2)}`,
-    investThesis: result.investThesis || "",
-    watchFor: Array.isArray(result.watchFor) ? result.watchFor : [],
-    comparableTo: result.comparableTo || "",
+    confidence: typeof result.confidence === "number" ? result.confidence : 50,
+    timeHorizon: (result.timeHorizon as string) || "N/A",
+    headline:
+      (result.headline as string) ||
+      `${verdict} rating assigned based on score of ${weightedTotal.toFixed(2)}`,
+    investThesis: (result.investThesis as string) || "",
+    watchFor: Array.isArray(result.watchFor) ? result.watchFor as string[] : [],
+    comparableTo: (result.comparableTo as string) || "",
     streamLog: [
-      `✅ Decision Made - Verdict: ${verdict} (Confidence: ${result.confidence || 50}%)`,
-      `   Headline: ${result.headline || "N/A"}`,
+      `✅ Decision Made - Verdict: ${verdict} (Confidence: ${result.confidence ?? 50}%)`,
+      `   Headline: ${(result.headline as string) || "N/A"}`,
     ],
   };
 };

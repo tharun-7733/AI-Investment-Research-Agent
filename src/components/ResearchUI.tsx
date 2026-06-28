@@ -4,10 +4,7 @@ import { useState, useEffect, useRef } from "react";
 import { Navbar } from "./Navbar";
 import { Hero } from "./Hero";
 import { AgentTrace } from "./AgentTrace";
-import { VerdictCard } from "./VerdictCard";
-import { ScoreCards } from "./ScoreCards";
-import { StrengthsRisks } from "./StrengthsRisks";
-import { ResearchReport } from "./ResearchReport";
+import { IntelligenceReport } from "./IntelligenceReport";
 import type { AgentState } from "@/lib/types";
 
 type AppState = "idle" | "analyzing" | "done";
@@ -17,8 +14,11 @@ export function ResearchUI() {
   const [logs, setLogs] = useState<string[]>([]);
   const [result, setResult] = useState<AgentState | null>(null);
   const [elapsedMs, setElapsedMs] = useState(0);
+  const [companyQuery, setCompanyQuery] = useState("");
+
   const startTimeRef = useRef<number | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const readerRef = useRef<ReadableStreamDefaultReader<Uint8Array> | null>(null);
   const resultsRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -29,6 +29,7 @@ export function ResearchUI() {
 
   const handleAnalyze = async (company: string) => {
     setAppState("analyzing");
+    setCompanyQuery(company);
     setLogs(["🚀 Initializing AlphaSignal research pipeline..."]);
     setResult(null);
     setElapsedMs(0);
@@ -37,11 +38,6 @@ export function ResearchUI() {
     timerRef.current = setInterval(() => {
       setElapsedMs(Date.now() - (startTimeRef.current ?? Date.now()));
     }, 100);
-
-    // Smooth scroll to results
-    setTimeout(() => {
-      resultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-    }, 300);
 
     try {
       const res = await fetch("/api/research", {
@@ -58,6 +54,7 @@ export function ResearchUI() {
       const reader = res.body?.getReader();
       const decoder = new TextDecoder();
       if (!reader) throw new Error("No stream body");
+      readerRef.current = reader;
 
       let buffer = "";
       while (true) {
@@ -75,18 +72,21 @@ export function ResearchUI() {
           if (dataStr === "[DONE]") {
             if (timerRef.current) clearInterval(timerRef.current);
             setAppState("done");
+            // Smooth scroll to results after state settles
+            setTimeout(() => {
+              resultsRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+            }, 400);
             continue;
           }
 
           try {
             const parsed = JSON.parse(dataStr);
-
             if (parsed.type === "log") {
-              setLogs(prev => [...prev, parsed.message]);
+              setLogs((prev) => [...prev, parsed.message]);
             } else if (parsed.type === "result") {
               setResult(parsed.data as AgentState);
             } else if (parsed.type === "error") {
-              setLogs(prev => [...prev, `❌ ${parsed.message}`]);
+              setLogs((prev) => [...prev, `❌ ${parsed.message}`]);
             }
           } catch {
             /* ignore parse errors */
@@ -95,225 +95,88 @@ export function ResearchUI() {
       }
     } catch (error) {
       if (timerRef.current) clearInterval(timerRef.current);
-      setLogs(prev => [...prev, `❌ Error: ${error instanceof Error ? error.message : "Unknown error"}`]);
+      setLogs((prev) => [
+        ...prev,
+        `❌ Error: ${error instanceof Error ? error.message : "Unknown error"}`,
+      ]);
       setAppState("done");
     }
+  };
+
+  const handleAbort = () => {
+    readerRef.current?.cancel().catch(() => {});
+    if (timerRef.current) clearInterval(timerRef.current);
+    setLogs((prev) => [...prev, "⚠️ Analysis aborted by user."]);
+    setAppState("done");
   };
 
   const scores = result?.scores;
   const synthesis = result?.synthesis;
   const companyInfo = result?.companyInfo;
-  const webAnalysis = result?.webAnalysis;
+  const displayName =
+    companyInfo?.name ?? result?.companyInput ?? companyQuery ?? "Research in Progress";
 
-  const hasResults = appState !== "idle";
-
-  return (
-    <div style={{ minHeight: "100vh", background: "var(--bg-deep)" }}>
-      <Navbar isAnalyzing={appState === "analyzing"} hasResults={appState === "done"} />
-
-      {/* Hero — always visible */}
-      <Hero onAnalyze={handleAnalyze} isLoading={appState === "analyzing"} />
-
-      {/* Results workspace */}
-      {hasResults && (
-        <div
-          ref={resultsRef}
-          style={{
-            padding: "0 24px 80px",
-            maxWidth: "1400px",
-            margin: "0 auto",
-            animation: "fadeIn 0.6s ease forwards",
-          }}
-        >
-          {/* Section label */}
-          <div
-            style={{
-              marginBottom: "32px",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "space-between",
-            }}
-          >
-            <div>
-              <div
-                style={{
-                  fontFamily: "'DM Mono', monospace",
-                  fontSize: "10px",
-                  letterSpacing: "0.12em",
-                  color: "#606880",
-                  textTransform: "uppercase",
-                  marginBottom: "4px",
-                }}
-              >
-                Analysis Workspace
-              </div>
-              <div
-                style={{
-                  fontFamily: "'Syne', sans-serif",
-                  fontWeight: 700,
-                  fontSize: "20px",
-                  color: "#fff",
-                  letterSpacing: "-0.02em",
-                }}
-              >
-                {result?.companyInfo?.name ?? result?.companyInput ?? "Research in Progress"}
-              </div>
-            </div>
-
-            {companyInfo && (
-              <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
-                {companyInfo.ticker && (
-                  <MetaBadge label={companyInfo.ticker} color="#5EA8FF" />
-                )}
-                {companyInfo.sector && (
-                  <MetaBadge label={companyInfo.sector} color="#A8B0C2" />
-                )}
-                {companyInfo.country && (
-                  <MetaBadge label={companyInfo.country} color="#A8B0C2" />
-                )}
-                {companyInfo.isPublic === false && (
-                  <MetaBadge label="PRIVATE" color="#F5C842" />
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* Main split layout */}
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "320px 1fr",
-              gap: "20px",
-              alignItems: "start",
-              marginBottom: "24px",
-            }}
-          >
-            {/* Left: Agent Trace */}
-            <div style={{ position: "sticky", top: "80px" }}>
-              <AgentTrace
-                logs={logs}
-                isLoading={appState === "analyzing"}
-                elapsedMs={elapsedMs}
-              />
-            </div>
-
-            {/* Right: Results */}
-            <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
-
-              {/* Verdict Card */}
-              <VerdictCard
-                companyName={companyInfo?.name ?? result?.companyInput}
-                verdict={result?.verdict}
-                confidence={result?.confidence}
-                headline={result?.headline}
-                timeHorizon={result?.timeHorizon}
-                weightedTotal={scores?.weightedTotal}
-              />
-
-              {/* Score Cards */}
-              {scores && (
-                <div>
-                  <SectionHeader label="Investment Scorecard" sublabel="Weighted across 5 dimensions" />
-                  <ScoreCards
-                    growth={scores.growth}
-                    moat={scores.moat}
-                    financialHealth={scores.financialHealth}
-                    sentiment={scores.sentiment}
-                    valuation={scores.valuation}
-                  />
-                </div>
-              )}
-
-              {/* Strengths & Risks */}
-              {synthesis && (synthesis.keyStrengths?.length || synthesis.keyRisks?.length) && (
-                <div>
-                  <SectionHeader label="Investment Factors" sublabel="Key strengths and material risks" />
-                  <StrengthsRisks
-                    strengths={synthesis.keyStrengths}
-                    risks={synthesis.keyRisks}
-                  />
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Full-width Report section */}
-          <div>
-            <SectionHeader label="Research Report" sublabel="AI-generated investment brief" />
-            <div style={{ height: "700px" }}>
-              <ResearchReport
-                report={result?.report}
-                rawState={result}
-                headline={result?.headline}
-              />
-            </div>
-          </div>
-
-          {/* Footer watermark */}
-          <div
-            style={{
-              marginTop: "40px",
-              textAlign: "center",
-              fontFamily: "'DM Mono', monospace",
-              fontSize: "10px",
-              color: "#606880",
-              letterSpacing: "0.06em",
-            }}
-          >
-            ALPHASIGNAL · AI INVESTMENT RESEARCH · NOT FINANCIAL ADVICE
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function SectionHeader({ label, sublabel }: { label: string; sublabel?: string }) {
-  return (
-    <div style={{ marginBottom: "16px" }}>
+  // ── ANALYZING: Full-screen workspace ─────────────────────────────────────
+  if (appState === "analyzing") {
+    return (
       <div
         style={{
-          fontFamily: "'Syne', sans-serif",
-          fontWeight: 700,
-          fontSize: "16px",
-          color: "#fff",
-          letterSpacing: "-0.01em",
+          height: "100vh",
+          display: "flex",
+          flexDirection: "column",
+          background: "#0A0C10",
+          overflow: "hidden",
         }}
       >
-        {label}
-      </div>
-      {sublabel && (
+        {/* Navbar */}
+        <Navbar isAnalyzing={true} hasResults={false} />
+
+        {/* Full-screen workspace below nav */}
         <div
           style={{
-            fontFamily: "'Inter', sans-serif",
-            fontSize: "12px",
-            color: "#606880",
-            marginTop: "2px",
+            marginTop: "64px",
+            flex: 1,
+            display: "flex",
+            flexDirection: "column",
+            overflow: "hidden",
+            position: "relative",
           }}
         >
-          {sublabel}
+          <AgentTrace
+            logs={logs}
+            isLoading={true}
+            elapsedMs={elapsedMs}
+            companyName={displayName}
+            onAbort={handleAbort}
+          />
         </div>
-      )}
-    </div>
+      </div>
+    );
+  }
+
+  // ── IDLE: Home page ───────────────────────────────────────────────────────
+  if (appState === "idle") {
+    return (
+      <div style={{ minHeight: "100vh", background: "#0A0C10", display: "flex", flexDirection: "column" }}>
+        <Navbar isAnalyzing={false} hasResults={false} />
+        <Hero onAnalyze={handleAnalyze} isLoading={false} />
+      </div>
+    );
+  }
+
+  // ── DONE: Intelligence Report page ──────────────────────────────────────
+  return (
+    <IntelligenceReport
+      result={result!}
+      logs={logs}
+      onNewSearch={() => {
+        setAppState("idle");
+        setResult(null);
+        setLogs([]);
+        setCompanyQuery("");
+      }}
+    />
   );
 }
 
-function MetaBadge({ label, color }: { label: string; color: string }) {
-  return (
-    <div
-      style={{
-        padding: "4px 10px",
-        borderRadius: "999px",
-        background: "rgba(255,255,255,0.04)",
-        border: `1px solid ${color}33`,
-        fontFamily: "'DM Mono', monospace",
-        fontSize: "11px",
-        color,
-        fontWeight: 500,
-        letterSpacing: "0.04em",
-      }}
-    >
-      {label}
-    </div>
-  );
-}
+

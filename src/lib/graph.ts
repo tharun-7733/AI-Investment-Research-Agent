@@ -21,13 +21,14 @@ const builder = new StateGraph(GraphState)
   
   .addEdge(START, "identifier")
   
-  // Fan-out to parallel research nodes
+  // webSearch and financials run in parallel after identifier
   .addEdge("identifier", "webSearch")
   .addEdge("identifier", "financials")
-  .addEdge("identifier", "competitive")
   
-  // Fan-in: wait for all 3 before synthesisNode
-  .addEdge("webSearch", "synthesisNode")
+  // competitive runs after webSearch (it uses webAnalysis context)
+  .addEdge("webSearch", "competitive")
+  
+  // Fan-in: wait for financials + competitive before synthesis
   .addEdge("financials", "synthesisNode")
   .addEdge("competitive", "synthesisNode")
   

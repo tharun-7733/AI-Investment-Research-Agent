@@ -1,5 +1,6 @@
 import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
 import { AgentState } from "../types";
+import { safeParseLlmJson, extractTextContent } from "../utils/parseJson";
 import { runMultipleSearches } from "../tools/tavilySearch";
 
 export const webSearchNode = async (state: AgentState): Promise<Partial<AgentState>> => {
@@ -9,37 +10,30 @@ export const webSearchNode = async (state: AgentState): Promise<Partial<AgentSta
 
   try {
     // Step 1 — Generate search queries
-    const queryModel = new ChatGoogleGenerativeAI({
+    const queryLlm = new ChatGoogleGenerativeAI({
       model: "gemini-2.5-flash",
-      temperature: 0,
+      temperature: 0.1,
+      maxOutputTokens: 1024,
     });
 
-    const systemPrompt1 = "You are a financial research analyst.\nReturn ONLY a JSON array of 5 strings. \nNo markdown, no explanation.";
+    const systemPrompt1 =
+      "You are a financial research analyst.\nReturn ONLY a JSON array of 5 strings. \nNo markdown, no explanation.";
     const userPrompt1 = `Generate 5 targeted investment research \nsearch queries for: ${resolvedName} in ${sector}.\nCover: latest financials or funding, recent news, \ncompetitors, leadership or controversies, \nfuture outlook.`;
 
-    const queryResponse = await queryModel.invoke([
+    const queryResponse = await queryLlm.invoke([
       { role: "system", content: systemPrompt1 },
-      { role: "user", content: userPrompt1 }
+      { role: "user", content: userPrompt1 },
     ]);
 
-    const queryContent = typeof queryResponse.content === 'string' 
-      ? queryResponse.content 
-      : (Array.isArray(queryResponse.content) && queryResponse.content.length > 0 && 'text' in queryResponse.content[0]) 
-        ? String((queryResponse.content[0] as any).text) 
-        : '';
-        
-    const queryJsonStr = queryContent.replace(/```json\n?/, '').replace(/```\n?$/, '').trim();
-    
-    let queries: string[] = [];
-    try {
-      const match = queryJsonStr.match(/\[[\s\S]*\]/);
-      const cleanJson = match ? match[0] : queryJsonStr;
-      queries = JSON.parse(cleanJson);
-      if (!Array.isArray(queries)) {
-        queries = [];
-      }
-    } catch (e) {
-      console.error("[WebSearchNode] Failed to parse queries:", e);
+    const queryRaw = extractTextContent(queryResponse.content);
+    const { data: queriesData, error: queryError } = safeParseLlmJson<string[]>(
+      queryRaw,
+      "WebSearchNode/queries"
+    );
+
+    const queries: string[] = Array.isArray(queriesData) ? queriesData : [];
+    if (queryError) {
+      console.warn("[WebSearchNode] Could not parse queries, proceeding with empty list.");
     }
 
     // Step 2 — Run searches
@@ -48,7 +42,7 @@ export const webSearchNode = async (state: AgentState): Promise<Partial<AgentSta
       const searchResults = await runMultipleSearches(queries);
       if (searchResults.length > 0) {
         searchResultsStr = searchResults
-          .map(r => `Title: ${r.title}\nURL: ${r.url}\nContent: ${r.content}`)
+          .map((r) => `Title: ${r.title}\nURL: ${r.url}\nContent: ${r.content}`)
           .join("\n\n---\n\n");
       }
     }
@@ -58,63 +52,56 @@ export const webSearchNode = async (state: AgentState): Promise<Partial<AgentSta
     }
 
     // Step 3 — Synthesize results
-    const synthModel = new ChatGoogleGenerativeAI({
+    const summaryLlm = new ChatGoogleGenerativeAI({
       model: "gemini-2.5-flash",
-      temperature: 0,
+      temperature: 0.2,
+      maxOutputTokens: 2048,
     });
 
-    const systemPrompt2 = "You are a senior equity research analyst.\nReturn ONLY valid JSON, no markdown.";
+    const systemPrompt2 =
+      "You are a senior equity research analyst.\nReturn ONLY valid JSON, no markdown.";
     const userPrompt2 = `Analyze these search results about ${resolvedName}:\n${searchResultsStr}\n\nReturn this exact JSON:\n{\n  "keyDevelopments": ["string"],\n  "sentiment": "positive" | "neutral" | "negative",\n  "sentimentScore": number (1-10),\n  "redFlags": ["string"],\n  "tailwinds": ["string"],\n  "recentEvents": ["string"],\n  "sourceSummary": "string"\n}\nIf data is missing use null for that field.`;
 
-    const synthResponse = await synthModel.invoke([
+    const synthResponse = await summaryLlm.invoke([
       { role: "system", content: systemPrompt2 },
-      { role: "user", content: userPrompt2 }
+      { role: "user", content: userPrompt2 },
     ]);
 
-    const synthContent = typeof synthResponse.content === 'string' 
-      ? synthResponse.content 
-      : (Array.isArray(synthResponse.content) && synthResponse.content.length > 0 && 'text' in synthResponse.content[0]) 
-        ? String((synthResponse.content[0] as any).text) 
-        : '';
+    const synthRaw = extractTextContent(synthResponse.content);
+    const { data: parsedResult, error: synthError } = safeParseLlmJson(
+      synthRaw,
+      "WebSearchNode/synthesis"
+    );
 
-    const synthJsonStr = synthContent.replace(/```json\n?/, '').replace(/```\n?$/, '').trim();
-    
-    let parsedResult;
-    try {
-      const match = synthJsonStr.match(/\{[\s\S]*\}/);
-      const cleanJson = match ? match[0] : synthJsonStr;
-      parsedResult = JSON.parse(cleanJson);
-    } catch (e) {
-      console.error("[WebSearchNode] Failed to parse synthesis:", e);
-      parsedResult = {
-        keyDevelopments: null,
-        sentiment: "neutral",
-        sentimentScore: 5,
-        redFlags: null,
-        tailwinds: null,
-        recentEvents: null,
-        sourceSummary: null
-      };
-    }
-
-    // Step 4
-    const sentiment = parsedResult.sentiment ?? 'neutral';
-    const score = parsedResult.sentimentScore ?? 5;
-    
-    return {
-      webAnalysis: parsedResult,
-      streamLog: [`✅ Web research complete. \n  Sentiment: ${sentiment} (${score}/10)`]
+    const webAnalysis = parsedResult ?? {
+      keyDevelopments: null,
+      sentiment: "neutral",
+      sentimentScore: 5,
+      redFlags: null,
+      tailwinds: null,
+      recentEvents: null,
+      sourceSummary: null,
     };
 
+    if (synthError) {
+      console.warn("[WebSearchNode] Using fallback web analysis due to parse error.");
+    }
+
+    const sentiment = (webAnalysis as any).sentiment ?? "neutral";
+    const score = (webAnalysis as any).sentimentScore ?? 5;
+
+    return {
+      webAnalysis: webAnalysis as AgentState["webAnalysis"],
+      streamLog: [`✅ Web research complete. \n  Sentiment: ${sentiment} (${score}/10)`],
+    };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     return {
       streamLog: [`❌ Error in Web Search Node: ${errorMessage}`],
-      // Never throw, always return partial state
       webAnalysis: {
         sentiment: "neutral",
         sentimentScore: 5,
-      }
+      },
     };
   }
 };
