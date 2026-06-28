@@ -393,14 +393,28 @@ export function Hero({ onAnalyze, isLoading }: HeroProps) {
           <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
             <div
               style={{
-                fontFamily: "'Playfair Display', serif",
-                fontWeight: 700,
-                fontSize: "22px",
-                letterSpacing: "-0.01em",
-                color: "#e2e2e2",
+                display: "flex",
+                alignItems: "center",
+                gap: "10px",
+                marginBottom: "12px",
               }}
             >
-              MERIDIAN
+              <img 
+                src="/logo.png" 
+                alt="Meridian Logo" 
+                style={{ width: "26px", height: "26px", filter: "invert(1)" }} 
+              />
+              <span
+                style={{
+                  fontFamily: "'Playfair Display', serif",
+                  fontWeight: 700,
+                  fontSize: "22px",
+                  letterSpacing: "-0.01em",
+                  color: "#e2e2e2",
+                }}
+              >
+                MERIDIAN
+              </span>
             </div>
             <div
               style={{

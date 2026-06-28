@@ -54,15 +54,28 @@ export default function LoginPage() {
       {/* Logo */}
       <div
         style={{
-          fontFamily: "'Playfair Display', serif",
-          fontWeight: 700,
-          fontSize: "28px",
-          letterSpacing: "-0.01em",
-          color: "#e2e2e2",
+          display: "flex",
+          alignItems: "center",
+          gap: "12px",
           marginBottom: "8px",
         }}
       >
-        MERIDIAN
+        <img 
+          src="/logo.png" 
+          alt="Meridian Logo" 
+          style={{ width: "32px", height: "32px", filter: "invert(1)" }} 
+        />
+        <div
+          style={{
+            fontFamily: "'Playfair Display', serif",
+            fontWeight: 700,
+            fontSize: "28px",
+            letterSpacing: "-0.01em",
+            color: "#e2e2e2",
+          }}
+        >
+          MERIDIAN
+        </div>
       </div>
       <div
         style={{

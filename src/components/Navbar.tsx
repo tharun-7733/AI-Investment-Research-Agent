@@ -76,16 +76,29 @@ export function Navbar({ isAnalyzing, hasResults }: NavbarProps) {
         <a
           href="/"
           style={{
-            fontFamily: "'Playfair Display', serif",
-            fontWeight: 700,
-            fontSize: "20px",
-            letterSpacing: "-0.01em",
-            color: "#e2e2e2",
+            display: "flex",
+            alignItems: "center",
+            gap: "10px",
             textDecoration: "none",
-            whiteSpace: "nowrap",
           }}
         >
-          MERIDIAN
+          <img 
+            src="/logo.png" 
+            alt="Meridian Logo" 
+            style={{ width: "24px", height: "24px", filter: "invert(1)" }} 
+          />
+          <span
+            style={{
+              fontFamily: "'Playfair Display', serif",
+              fontWeight: 700,
+              fontSize: "20px",
+              letterSpacing: "-0.01em",
+              color: "#e2e2e2",
+              whiteSpace: "nowrap",
+            }}
+          >
+            MERIDIAN
+          </span>
         </a>
 
         {/* Nav Links */}
