@@ -1159,6 +1159,7 @@ export function IntelligenceReport({ result, onNewSearch, logs }: IntelligenceRe
 
       {/* ── Footer ──────────────────────────────────────────────────────────── */}
       <footer
+        id="footer"
         style={{
           width: "100%",
           padding: "64px 64px",
@@ -1190,6 +1191,50 @@ export function IntelligenceReport({ result, onNewSearch, logs }: IntelligenceRe
             MERIDIAN
           </span>
           <div style={{ display: "flex", flexWrap: "wrap", gap: "24px" }}>
+            <a
+              href="mailto:tharuntej7373@gmail.com"
+              style={{
+                fontFamily: "'Inter', sans-serif",
+                fontWeight: 600,
+                fontSize: "12px",
+                letterSpacing: "0.08em",
+                textTransform: "uppercase",
+                color: "rgba(198,198,203,0.7)",
+                textDecoration: "none",
+                transition: "color 0.3s ease",
+              }}
+              onMouseEnter={(e) =>
+                ((e.currentTarget as HTMLAnchorElement).style.color = "#dac769")
+              }
+              onMouseLeave={(e) =>
+                ((e.currentTarget as HTMLAnchorElement).style.color = "rgba(198,198,203,0.7)")
+              }
+            >
+              Contact
+            </a>
+            <a
+              href="https://tharunportfolio.me"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                fontFamily: "'Inter', sans-serif",
+                fontWeight: 600,
+                fontSize: "12px",
+                letterSpacing: "0.08em",
+                textTransform: "uppercase",
+                color: "rgba(198,198,203,0.7)",
+                textDecoration: "none",
+                transition: "color 0.3s ease",
+              }}
+              onMouseEnter={(e) =>
+                ((e.currentTarget as HTMLAnchorElement).style.color = "#dac769")
+              }
+              onMouseLeave={(e) =>
+                ((e.currentTarget as HTMLAnchorElement).style.color = "rgba(198,198,203,0.7)")
+              }
+            >
+              Creator Portfolio
+            </a>
             {["Privacy Policy", "Terms of Service", "Disclosures", "Methodology"].map((link) => (
               <a
                 key={link}

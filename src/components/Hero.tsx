@@ -139,9 +139,9 @@ export function Hero({ onAnalyze, isLoading }: HeroProps) {
                 margin: 0,
               }}
             >
-              Institutional Intelligence.
+              Know Before
               <br />
-              On Demand.
+              The Market Does.
             </h1>
             <p
               className="animate-fade-in stagger-1"
@@ -155,8 +155,8 @@ export function Hero({ onAnalyze, isLoading }: HeroProps) {
                 margin: "0 auto",
               }}
             >
-              Deploy a network of specialized AI agents to analyze any public or
-              private entity. Precision engineering meets unprecedented scale.
+              Seven specialized agents. One precise verdict.
+              Research any company — public or private — in under a minute.
             </p>
           </div>
 
@@ -371,31 +371,21 @@ export function Hero({ onAnalyze, isLoading }: HeroProps) {
 
       {/* ─── Footer ─────────────────────────────────────────────────────────── */}
       <footer
+        id="footer"
         style={{
-          width: "100%",
-          padding: "64px 64px",
-          marginTop: "auto",
+          padding: "64px",
+          borderTop: "1px solid rgba(69, 71, 75, 0.3)",
           display: "flex",
           flexDirection: "column",
           gap: "32px",
-          background: "#0c0f0f",
-          borderTop: "1px solid rgba(69, 71, 75, 0.2)",
         }}
       >
-        <div
-          style={{
-            display: "flex",
-            flexWrap: "wrap",
-            justifyContent: "space-between",
-            alignItems: "center",
-            gap: "32px",
-          }}
-        >
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "48px" }}>
           <div
             style={{
               fontFamily: "'Playfair Display', serif",
               fontWeight: 700,
-              fontSize: "20px",
+              fontSize: "24px",
               letterSpacing: "-0.01em",
               color: "#e2e2e2",
             }}
@@ -403,6 +393,42 @@ export function Hero({ onAnalyze, isLoading }: HeroProps) {
             MERIDIAN
           </div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: "32px" }}>
+            <a
+              href="mailto:tharuntej7373@gmail.com"
+              style={{
+                fontFamily: "'Inter', sans-serif",
+                fontWeight: 600,
+                fontSize: "12px",
+                letterSpacing: "0.08em",
+                textTransform: "uppercase",
+                color: "rgba(198, 198, 203, 0.7)",
+                textDecoration: "none",
+                transition: "color 0.3s ease",
+              }}
+              onMouseEnter={(e) => ((e.currentTarget as HTMLAnchorElement).style.color = "#dac769")}
+              onMouseLeave={(e) => ((e.currentTarget as HTMLAnchorElement).style.color = "rgba(198, 198, 203, 0.7)")}
+            >
+              Contact
+            </a>
+            <a
+              href="https://tharunportfolio.me"
+              target="_blank"
+              rel="noopener noreferrer"
+              style={{
+                fontFamily: "'Inter', sans-serif",
+                fontWeight: 600,
+                fontSize: "12px",
+                letterSpacing: "0.08em",
+                textTransform: "uppercase",
+                color: "rgba(198, 198, 203, 0.7)",
+                textDecoration: "none",
+                transition: "color 0.3s ease",
+              }}
+              onMouseEnter={(e) => ((e.currentTarget as HTMLAnchorElement).style.color = "#dac769")}
+              onMouseLeave={(e) => ((e.currentTarget as HTMLAnchorElement).style.color = "rgba(198, 198, 203, 0.7)")}
+            >
+              Creator Portfolio
+            </a>
             {["Privacy Policy", "Terms of Service", "Disclosures", "Methodology"].map((link) => (
               <a
                 key={link}

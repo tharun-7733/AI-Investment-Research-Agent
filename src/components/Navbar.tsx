@@ -13,7 +13,7 @@ const NAV_LINKS = [
   { label: "Terminal", href: "/" },
   { label: "Intelligence", href: "/intelligence" },
   { label: "Portfolio", href: "/portfolio" },
-  { label: "Settings", href: "/settings" },
+  { label: "Contact", href: "#footer" },
 ];
 
 export function Navbar({ isAnalyzing, hasResults }: NavbarProps) {
@@ -91,14 +91,19 @@ export function Navbar({ isAnalyzing, hasResults }: NavbarProps) {
         {/* Nav Links */}
         <div className="nav-links" style={{ display: "flex", gap: "32px", alignItems: "center" }}>
           {NAV_LINKS.map(({ label, href }) => {
-            const isActive = pathname === href || (href !== "/" && pathname?.startsWith(href));
+            const isActive = pathname === href || (href !== "/" && href !== "#footer" && pathname?.startsWith(href));
             return (
               <a
                 key={label}
                 href={href}
                 onClick={(e) => {
-                  e.preventDefault();
-                  router.push(href);
+                  if (href.startsWith("#")) {
+                    // Let anchor link work natively for smooth scroll if on same page
+                    // Or push if we want Next router to handle it
+                  } else {
+                    e.preventDefault();
+                    router.push(href);
+                  }
                 }}
                 style={{
                   fontFamily: "'Inter', sans-serif",
@@ -127,59 +132,8 @@ export function Navbar({ isAnalyzing, hasResults }: NavbarProps) {
         </div>
       </div>
 
-      {/* Right: Status + Auth */}
+      {/* Right: Auth */}
       <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-        {/* Status Pill */}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "6px",
-            padding: "4px 12px",
-            borderRadius: "999px",
-            background: "rgba(255,255,255,0.04)",
-            border: "1px solid rgba(255,255,255,0.07)",
-            fontSize: "11px",
-            fontFamily: "'JetBrains Mono', monospace",
-            color: isAnalyzing ? "#dac769" : hasResults ? "#a8cfbd" : "#c6c6cb",
-            letterSpacing: "0.04em",
-          }}
-        >
-          <span
-            style={{
-              width: "5px",
-              height: "5px",
-              borderRadius: "50%",
-              background: isAnalyzing ? "#dac769" : hasResults ? "#a8cfbd" : "#909095",
-              flexShrink: 0,
-              boxShadow: isAnalyzing ? "0 0 8px rgba(218,199,105,0.8)" : "none",
-            }}
-          />
-          {isAnalyzing ? "Analyzing..." : hasResults ? "Complete" : "Ready"}
-        </div>
-
-        {/* Notifications */}
-        <button
-          aria-label="Notifications"
-          style={{
-            background: "none", border: "none", cursor: "pointer",
-            padding: "8px", borderRadius: "4px", color: "#c6c6cb",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            transition: "color 0.2s ease, background 0.2s ease",
-          }}
-          onMouseEnter={(e) => {
-            (e.currentTarget as HTMLButtonElement).style.color = "#e2e2e2";
-            (e.currentTarget as HTMLButtonElement).style.background = "rgba(40,42,43,0.5)";
-          }}
-          onMouseLeave={(e) => {
-            (e.currentTarget as HTMLButtonElement).style.color = "#c6c6cb";
-            (e.currentTarget as HTMLButtonElement).style.background = "none";
-          }}
-        >
-          <span className="material-symbols-outlined" style={{ fontSize: "22px", fontVariationSettings: "'FILL' 0" }}>
-            notifications
-          </span>
-        </button>
 
         {/* Profile */}
         {userEmail ? (
