@@ -9,7 +9,7 @@ interface Report {
   company_name: string;
   ticker: string | null;
   verdict: string | null;
-  weighted_score: number | null;
+  scores: { total: number } | null;
   headline: string | null;
   created_at: string;
 }
@@ -73,7 +73,7 @@ export default function WatchlistPage() {
     setLoading(true);
     const { data, error } = await supabase
       .from("reports")
-      .select("id, company_name, ticker, verdict, weighted_score, headline, created_at")
+      .select("id, company_name, ticker, verdict, scores, headline, created_at")
       .order("created_at", { ascending: false });
 
     if (error || !data) {
@@ -90,7 +90,7 @@ export default function WatchlistPage() {
           name: r.company_name,
           ticker: r.ticker,
           latestVerdict: r.verdict,
-          latestScore: r.weighted_score,
+          latestScore: r.scores?.total ?? null,
           latestHeadline: r.headline,
           lastAnalyzed: r.created_at,
           reportCount: 1,
