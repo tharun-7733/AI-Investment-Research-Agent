@@ -12,7 +12,7 @@ interface NavbarProps {
 const NAV_LINKS = [
   { label: "Terminal", href: "/" },
   { label: "Intelligence", href: "/intelligence" },
-  { label: "Watchlist", href: "/portfolio" },
+  { label: "Trending", href: "/trending" },
   { label: "Contact", href: "#footer" },
 ];
 
