@@ -8,7 +8,7 @@ export const financialsNode = async (state: AgentState): Promise<Partial<AgentSt
 
   if (!companyInfo?.name) {
     return {
-      streamLog: ["❌ Error: No company name available for Financials Node."],
+      streamLog: ["⊗ ABORT — No entity resolved for Financials."],
       financialAnalysis: getEmptyAnalysis(),
     };
   }
@@ -76,12 +76,12 @@ export const financialsNode = async (state: AgentState): Promise<Partial<AgentSt
 
     return {
       financialAnalysis: analysis,
-      streamLog: [`✅ Financials analyzed. \n  Health score: ${healthScore}/10`],
+      streamLog: [`◈ FINANCIALS PROCESSED. \n  Health score: ${healthScore}/10`],
     };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     return {
-      streamLog: [`❌ Error in Financials Node: ${errorMessage}`],
+      streamLog: [`⊗ FINANCIALS FAULT — ${errorMessage}`],
       financialAnalysis: getEmptyAnalysis(),
     };
   }

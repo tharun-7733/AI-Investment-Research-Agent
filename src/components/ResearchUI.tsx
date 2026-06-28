@@ -100,7 +100,7 @@ export function ResearchUI() {
       if (timerRef.current) clearInterval(timerRef.current);
       setLogs((prev) => [
         ...prev,
-        `❌ Error: ${error instanceof Error ? error.message : "Unknown error"}`,
+        `⊗ FAULT — ${error instanceof Error ? error.message : "Unknown error"}`,
       ]);
       setAppState("done");
     }

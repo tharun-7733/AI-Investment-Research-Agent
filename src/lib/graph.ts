@@ -62,7 +62,7 @@ export const runInvestmentAgent = async (
     console.error("[Graph] Fatal Execution Error:", error);
     return {
       error: error instanceof Error ? error.message : String(error),
-      streamLog: [`❌ Fatal Graph Error: ${String(error)}`]
+      streamLog: [`⊗ FATAL — ${String(error)}`]
     } as unknown as AgentState;
   }
 };

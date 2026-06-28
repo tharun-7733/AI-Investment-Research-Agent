@@ -7,7 +7,7 @@ export const identifierNode = async (state: AgentState): Promise<Partial<AgentSt
   if (!companyInput) {
     return {
       error: "No companyInput provided in state.",
-      streamLog: ["❌ Error: No companyInput provided in state."],
+      streamLog: ["⊗ ABORT — No input provided."],
     };
   }
 
@@ -47,7 +47,7 @@ ticker and exchange are null for private companies.`;
     if (error || !parsedResult) {
       return {
         error: `Failed to parse company data: ${error}`,
-        streamLog: [`❌ IdentifierNode parse error: ${error}`],
+        streamLog: [`⊗ PARSE FAULT — ${error}`],
       };
     }
 
@@ -56,7 +56,7 @@ ticker and exchange are null for private companies.`;
     if (result.error) {
       return {
         error: String(result.error),
-        streamLog: [`❌ Identifier Error: ${result.error}`],
+        streamLog: [`⊗ IDENTIFIER FAULT — ${result.error}`],
       };
     }
 
@@ -66,13 +66,13 @@ ticker and exchange are null for private companies.`;
 
     return {
       companyInfo: companyInfo as AgentState["companyInfo"],
-      streamLog: [`✅ Identified: ${resolvedName} (${(companyInfo as any).ticker ?? "Private"})`],
+      streamLog: [`◈ RESOLVED: ${resolvedName} (${(companyInfo as any).ticker ?? "Private"})`],
     };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     return {
       error: `Failed to resolve company data: ${errorMessage}`,
-      streamLog: [`❌ Error in Identifier Node: ${errorMessage}`],
+      streamLog: [`⊗ IDENTIFIER FAULT — ${errorMessage}`],
     };
   }
 };

@@ -89,7 +89,7 @@ export function AgentTrace({
       const l = log.toLowerCase();
       for (const node of PIPELINE_NODES) {
         if (node.keywords.some((kw) => l.includes(kw))) {
-          updated[node.id] = l.includes("✅") ? "done" : "running";
+          updated[node.id] = l.startsWith("◈") || l.includes("◈") ? "done" : "running";
         }
       }
     });
@@ -586,9 +586,9 @@ function PipelineStep({
 }
 
 function LogLine({ log, isLatest }: { log: string; isLatest: boolean }) {
-  const isSuccess = log.startsWith("✅");
-  const isError = log.startsWith("❌");
-  const isWarning = log.startsWith("⚠️");
+  const isSuccess = log.startsWith("◈");
+  const isError = log.startsWith("⊗");
+  const isWarning = log.startsWith("▲");
 
   let prefixColor = "#c6c6cb";
   let textColor = "#c6c6cb";

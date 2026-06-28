@@ -92,12 +92,12 @@ export const webSearchNode = async (state: AgentState): Promise<Partial<AgentSta
 
     return {
       webAnalysis: webAnalysis as AgentState["webAnalysis"],
-      streamLog: [`✅ Web research complete. \n  Sentiment: ${sentiment} (${score}/10)`],
+      streamLog: [`◈ WEB SIGNALS CAPTURED. \n  Sentiment: ${sentiment} (${score}/10)`],
     };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     return {
-      streamLog: [`❌ Error in Web Search Node: ${errorMessage}`],
+      streamLog: [`⊗ WEB SEARCH FAULT — ${errorMessage}`],
       webAnalysis: {
         sentiment: "neutral",
         sentimentScore: 5,

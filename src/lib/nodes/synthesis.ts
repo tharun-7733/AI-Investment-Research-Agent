@@ -7,7 +7,7 @@ export const synthesisNode = async (state: AgentState): Promise<Partial<AgentSta
 
   if (!companyInfo?.name) {
     return {
-      streamLog: ["❌ Error: No company name available for Synthesis Node."],
+      streamLog: ["⊗ ABORT — No entity resolved for Synthesis."],
       scores: getEmptyScores(),
       synthesis: getEmptySynthesis(),
     };
@@ -113,12 +113,12 @@ Return this exact JSON:
     return {
       scores,
       synthesis,
-      streamLog: [`✅ Score: ${scores.weightedTotal}/10`],
+      streamLog: [`◈ SCORE: ${scores.weightedTotal}/10`],
     };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     return {
-      streamLog: [`❌ Error in Synthesis Node: ${errorMessage}`],
+      streamLog: [`⊗ SYNTHESIS FAULT — ${errorMessage}`],
       scores: getEmptyScores(),
       synthesis: getEmptySynthesis(),
     };

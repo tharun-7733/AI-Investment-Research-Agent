@@ -85,7 +85,7 @@ No markdown. verdict must be one of: INVEST, WATCH, PASS. The verdict must be de
     watchFor: Array.isArray(result.watchFor) ? result.watchFor as string[] : [],
     comparableTo: (result.comparableTo as string) || "",
     streamLog: [
-      `✅ Decision Made - Verdict: ${verdict} (Confidence: ${result.confidence ?? 50}%)`,
+      `◈ VERDICT LOCKED — ${verdict} (Confidence: ${result.confidence ?? 50}%)`,
       `   Headline: ${(result.headline as string) || "N/A"}`,
     ],
   };

@@ -90,12 +90,12 @@ Use this EXACT markdown structure:
 
     return {
       report: content,
-      streamLog: ["✅ Report generated"],
+      streamLog: ["◈ BRIEF COMPILED"],
     };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     return {
-      streamLog: [`❌ Error in Reporter Node: ${errorMessage}`],
+      streamLog: [`⊗ REPORTER FAULT — ${errorMessage}`],
       report: `# ${resolvedName} — Investment Research Brief\n\nFailed to generate report due to error: ${errorMessage}`,
     };
   }

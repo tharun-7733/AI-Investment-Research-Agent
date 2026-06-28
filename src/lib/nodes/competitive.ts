@@ -7,7 +7,7 @@ export const competitiveNode = async (state: AgentState): Promise<Partial<AgentS
 
   if (!companyInfo?.name) {
     return {
-      streamLog: ["❌ Error: No company name available for Competitive Node."],
+      streamLog: ["⊗ ABORT — No entity resolved for Competitive."],
       competitiveAnalysis: getEmptyAnalysis(),
     };
   }
@@ -63,13 +63,13 @@ export const competitiveNode = async (state: AgentState): Promise<Partial<AgentS
     return {
       competitiveAnalysis: analysis,
       streamLog: [
-        `✅ Competitive analysis done. \n  Moat: ${analysis.moatType} (${analysis.moatStrength}/10)`,
+        `◈ COMPETITIVE MAPPED. \n  Moat: ${analysis.moatType} (${analysis.moatStrength}/10)`,
       ],
     };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     return {
-      streamLog: [`❌ Error in Competitive Node: ${errorMessage}`],
+      streamLog: [`⊗ COMPETITIVE FAULT — ${errorMessage}`],
       competitiveAnalysis: getEmptyAnalysis(),
     };
   }
