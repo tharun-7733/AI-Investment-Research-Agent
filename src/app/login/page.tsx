@@ -62,7 +62,7 @@ export default function LoginPage() {
           marginBottom: "8px",
         }}
       >
-        EQUITY ANALYTICA
+        MERIDIAN
       </div>
       <div
         style={{
@@ -287,7 +287,7 @@ export default function LoginPage() {
           textAlign: "center",
         }}
       >
-        EQUITY ANALYTICA · NOT FINANCIAL ADVICE · JWT SECURED
+        MERIDIAN · NOT FINANCIAL ADVICE · JWT SECURED
       </div>
 
       <style>{`

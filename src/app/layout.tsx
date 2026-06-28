@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "AlphaSignal — AI Investment Research",
-  description: "Research any company. Get an investment verdict in seconds. Powered by AI.",
+  title: "Meridian — AI Investment Research",
+  description: "Precision investment intelligence. Research any company, get an AI-generated verdict in seconds.",
 };
 
 export default function RootLayout({

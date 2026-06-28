@@ -400,7 +400,7 @@ export function Hero({ onAnalyze, isLoading }: HeroProps) {
               color: "#e2e2e2",
             }}
           >
-            EQUITY ANALYTICA
+            MERIDIAN
           </div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: "32px" }}>
             {["Privacy Policy", "Terms of Service", "Disclosures", "Methodology"].map((link) => (
@@ -433,7 +433,7 @@ export function Hero({ onAnalyze, isLoading }: HeroProps) {
             color: "#c6c6cb",
           }}
         >
-          © 2024 Equity Analytica. Institutional Grade Intelligence. Member FINRA/SIPC.
+          © 2024 Meridian. Institutional Grade Intelligence. Member FINRA/SIPC.
         </div>
       </footer>
     </>

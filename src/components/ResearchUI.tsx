@@ -31,7 +31,7 @@ export function ResearchUI() {
   const handleAnalyze = async (company: string) => {
     setAppState("analyzing");
     setCompanyQuery(company);
-    setLogs(["🚀 Initializing AlphaSignal research pipeline..."]);
+    setLogs(["◈ MERIDIAN — Initializing research pipeline..."]);
     setResult(null);
     setElapsedMs(0);
 

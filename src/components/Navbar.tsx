@@ -85,7 +85,7 @@ export function Navbar({ isAnalyzing, hasResults }: NavbarProps) {
             whiteSpace: "nowrap",
           }}
         >
-          EQUITY ANALYTICA
+          MERIDIAN
         </a>
 
         {/* Nav Links */}

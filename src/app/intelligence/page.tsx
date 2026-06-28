@@ -122,7 +122,7 @@ export default function IntelligencePage() {
               fontSize: "18px", color: "#e2e2e2", textDecoration: "none",
             }}
           >
-            EQUITY ANALYTICA
+            MERIDIAN
           </a>
           {["Terminal", "Intelligence", "Portfolio", "Settings"].map((link) => (
             <a
