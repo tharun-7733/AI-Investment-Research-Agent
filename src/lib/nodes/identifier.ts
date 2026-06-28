@@ -1,4 +1,4 @@
-import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
+import { ChatGroq } from "@langchain/groq";
 import { AgentState } from "../types";
 import { safeParseLlmJson, extractTextContent } from "../utils/parseJson";
 
@@ -12,10 +12,10 @@ export const identifierNode = async (state: AgentState): Promise<Partial<AgentSt
   }
 
   try {
-    const llm = new ChatGoogleGenerativeAI({
-      model: "gemini-2.5-flash",
+    const llm = new ChatGroq({
+      model: "llama-3.3-70b-versatile",
       temperature: 0,
-      maxOutputTokens: 1024,
+      maxTokens: 1024,
     });
 
     const systemPrompt =

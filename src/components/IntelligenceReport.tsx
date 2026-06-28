@@ -135,6 +135,10 @@ export function IntelligenceReport({ result, onNewSearch, logs }: IntelligenceRe
               <a
                 key={link}
                 href="#"
+                onClick={(e) => {
+                  e.preventDefault();
+                  if (link === "Terminal") onNewSearch();
+                }}
                 style={{
                   fontFamily: "'Inter', sans-serif",
                   fontWeight: 600,
@@ -147,6 +151,7 @@ export function IntelligenceReport({ result, onNewSearch, logs }: IntelligenceRe
                   borderBottom: link === "Intelligence" ? "2px solid #dac769" : "2px solid transparent",
                   paddingBottom: link === "Intelligence" ? "2px" : "4px",
                   transition: "color 0.2s ease",
+                  cursor: "pointer",
                 }}
               >
                 {link}
@@ -201,7 +206,7 @@ export function IntelligenceReport({ result, onNewSearch, logs }: IntelligenceRe
           </div>
 
           {/* Icons */}
-          {["notifications", "account_circle"].map((icon) => (
+          {["notifications", "account_circle", "logout"].map((icon) => (
             <button
               key={icon}
               style={{

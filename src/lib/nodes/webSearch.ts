@@ -1,4 +1,4 @@
-import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
+import { ChatGroq } from "@langchain/groq";
 import { AgentState } from "../types";
 import { safeParseLlmJson, extractTextContent } from "../utils/parseJson";
 import { runMultipleSearches } from "../tools/tavilySearch";
@@ -10,10 +10,10 @@ export const webSearchNode = async (state: AgentState): Promise<Partial<AgentSta
 
   try {
     // Step 1 — Generate search queries
-    const queryLlm = new ChatGoogleGenerativeAI({
-      model: "gemini-2.5-flash",
+    const queryLlm = new ChatGroq({
+      model: "llama-3.3-70b-versatile",
       temperature: 0.1,
-      maxOutputTokens: 1024,
+      maxTokens: 1024,
     });
 
     const systemPrompt1 =
@@ -52,10 +52,10 @@ export const webSearchNode = async (state: AgentState): Promise<Partial<AgentSta
     }
 
     // Step 3 — Synthesize results
-    const summaryLlm = new ChatGoogleGenerativeAI({
-      model: "gemini-2.5-flash",
+    const summaryLlm = new ChatGroq({
+      model: "llama-3.3-70b-versatile",
       temperature: 0.2,
-      maxOutputTokens: 2048,
+      maxTokens: 2048,
     });
 
     const systemPrompt2 =

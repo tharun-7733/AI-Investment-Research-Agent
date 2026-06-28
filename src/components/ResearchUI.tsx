@@ -5,6 +5,7 @@ import { Navbar } from "./Navbar";
 import { Hero } from "./Hero";
 import { AgentTrace } from "./AgentTrace";
 import { IntelligenceReport } from "./IntelligenceReport";
+import { createClient } from "@/lib/supabase/client";
 import type { AgentState } from "@/lib/types";
 
 type AppState = "idle" | "analyzing" | "done";
@@ -84,7 +85,9 @@ export function ResearchUI() {
             if (parsed.type === "log") {
               setLogs((prev) => [...prev, parsed.message]);
             } else if (parsed.type === "result") {
-              setResult(parsed.data as AgentState);
+              const agentState = parsed.data as AgentState;
+              setResult(agentState);
+              saveReport(agentState);
             } else if (parsed.type === "error") {
               setLogs((prev) => [...prev, `❌ ${parsed.message}`]);
             }
@@ -100,6 +103,39 @@ export function ResearchUI() {
         `❌ Error: ${error instanceof Error ? error.message : "Unknown error"}`,
       ]);
       setAppState("done");
+    }
+  };
+
+  // Auto-save result to Supabase when analysis completes
+  const saveReport = async (state: AgentState) => {
+    try {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return; // not logged in — skip silently
+      const info = state.companyInfo ?? {};
+      await supabase.from("reports").insert({
+        user_id: user.id,
+        company_input: state.companyInput ?? "",
+        company_name: info.name ?? null,
+        ticker: info.ticker ?? null,
+        sector: info.sector ?? null,
+        exchange: info.exchange ?? null,
+        country: info.country ?? null,
+        is_public: info.isPublic ?? null,
+        verdict: state.verdict ?? null,
+        confidence: state.confidence ?? null,
+        headline: state.headline ?? null,
+        invest_thesis: state.investThesis ?? null,
+        time_horizon: state.timeHorizon ?? null,
+        scores: state.scores ?? null,
+        financial_analysis: state.financialAnalysis ?? null,
+        competitive_analysis: state.competitiveAnalysis ?? null,
+        synthesis: state.synthesis ?? null,
+        web_analysis: state.webAnalysis ?? null,
+        report: state.report ?? null,
+      });
+    } catch {
+      // non-critical — fail silently
     }
   };
 

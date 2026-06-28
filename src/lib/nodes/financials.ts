@@ -1,4 +1,4 @@
-import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
+import { ChatGroq } from "@langchain/groq";
 import { AgentState, FinancialAnalysis } from "../types";
 import { getFinancialData } from "../tools/alphaVantage";
 import { safeParseLlmJson, extractTextContent } from "../utils/parseJson";
@@ -22,10 +22,10 @@ export const financialsNode = async (state: AgentState): Promise<Partial<AgentSt
     const financialData = await getFinancialData(ticker);
 
     // Step 2 — Analyze with Gemini
-    const llm = new ChatGoogleGenerativeAI({
-      model: "gemini-2.5-flash",
+    const llm = new ChatGroq({
+      model: "llama-3.3-70b-versatile",
       temperature: 0.1,
-      maxOutputTokens: 2048,
+      maxTokens: 2048,
     });
 
     const systemPrompt =

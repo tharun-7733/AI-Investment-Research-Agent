@@ -1,4 +1,4 @@
-import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
+import { ChatGroq } from "@langchain/groq";
 import { AgentState, CompetitiveAnalysis } from "../types";
 import { safeParseLlmJson, extractTextContent } from "../utils/parseJson";
 
@@ -24,10 +24,10 @@ export const competitiveNode = async (state: AgentState): Promise<Partial<AgentS
       : "No recent events from search.";
 
   try {
-    const model = new ChatGoogleGenerativeAI({
-      model: "gemini-2.5-flash",
+    const model = new ChatGroq({
+      model: "llama-3.3-70b-versatile",
       temperature: 0.1,
-      maxOutputTokens: 2048,
+      maxTokens: 2048,
     });
 
     const systemPrompt =

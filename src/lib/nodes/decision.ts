@@ -2,14 +2,14 @@
 // Final investment committee verdict: INVEST | WATCH | PASS.
 
 import { State } from "../state";
-import { ChatGoogleGenerativeAI } from "@langchain/google-genai";
+import { ChatGroq } from "@langchain/groq";
 import { safeParseLlmJson, extractTextContent } from "../utils/parseJson";
 
 const getLLM = () =>
-  new ChatGoogleGenerativeAI({
-    model: "gemini-2.5-flash",
+  new ChatGroq({
+    model: "llama-3.3-70b-versatile",
     temperature: 0.2,
-    maxOutputTokens: 2048,
+    maxTokens: 2048,
   });
 
 export const decisionNode = async (state: State): Promise<Partial<State>> => {
