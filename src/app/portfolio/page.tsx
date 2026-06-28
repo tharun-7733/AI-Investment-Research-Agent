@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
-
+import { Navbar } from "@/components/Navbar";
 interface Report {
   id: string;
   company_name: string;
@@ -124,6 +124,7 @@ export default function WatchlistPage() {
         fontFamily: "'Inter', sans-serif",
       }}
     >
+      <Navbar isAnalyzing={false} hasResults={false} />
       {/* ── Header ── */}
       <div
         style={{

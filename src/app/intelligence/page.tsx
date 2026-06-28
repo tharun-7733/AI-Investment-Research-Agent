@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
-
+import { Navbar } from "@/components/Navbar";
 interface Report {
   id: string;
   company_input: string;
@@ -103,62 +103,7 @@ export default function IntelligencePage() {
 
   return (
     <div style={{ minHeight: "100vh", background: "#0A0C10" }}>
-      {/* Nav */}
-      <nav
-        style={{
-          position: "fixed", top: 0, left: 0, right: 0, zIndex: 100,
-          height: "64px", display: "flex", alignItems: "center",
-          justifyContent: "space-between", padding: "0 64px",
-          background: "rgba(18,20,20,0.92)",
-          backdropFilter: "blur(16px)",
-          borderBottom: "1px solid rgba(69,71,75,0.3)",
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: "40px" }}>
-          <a
-            href="/"
-            style={{
-              fontFamily: "'Playfair Display', serif", fontWeight: 700,
-              fontSize: "18px", color: "#e2e2e2", textDecoration: "none",
-            }}
-          >
-            MERIDIAN
-          </a>
-          {["Terminal", "Intelligence", "Portfolio", "Settings"].map((link) => (
-            <a
-              key={link}
-              href={link === "Terminal" ? "/" : `/${link.toLowerCase()}`}
-              style={{
-                fontFamily: "'Inter', sans-serif", fontWeight: 600,
-                fontSize: "12px", letterSpacing: "0.08em", textTransform: "uppercase",
-                color: link === "Intelligence" ? "#dac769" : "#c6c6cb",
-                textDecoration: "none",
-                borderBottom: link === "Intelligence" ? "2px solid #dac769" : "2px solid transparent",
-                paddingBottom: "4px", transition: "color 0.2s ease",
-              }}
-            >
-              {link}
-            </a>
-          ))}
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-          <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: "11px", color: "#909095" }}>
-            {userEmail}
-          </span>
-          <button
-            onClick={async () => { await supabase.auth.signOut(); router.push("/login"); }}
-            style={{
-              background: "none", border: "1px solid rgba(255,180,171,0.3)",
-              borderRadius: "2px", padding: "6px 14px", cursor: "pointer",
-              fontFamily: "'Inter', sans-serif", fontWeight: 600,
-              fontSize: "11px", letterSpacing: "0.08em", textTransform: "uppercase",
-              color: "#ffb4ab", transition: "background 0.2s",
-            }}
-          >
-            Logout
-          </button>
-        </div>
-      </nav>
+      <Navbar isAnalyzing={false} hasResults={false} />
 
       {/* Content */}
       <main style={{ paddingTop: "96px", paddingBottom: "80px", maxWidth: "1200px", margin: "0 auto", padding: "96px 48px 80px" }}>
