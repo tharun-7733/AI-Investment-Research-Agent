@@ -369,100 +369,180 @@ export function Hero({ onAnalyze, isLoading }: HeroProps) {
         </div>
       </main>
 
-      {/* ─── Footer ─────────────────────────────────────────────────────────── */}
       <footer
         id="footer"
         style={{
-          padding: "64px",
+          padding: "80px 64px 0",
           borderTop: "1px solid rgba(69, 71, 75, 0.3)",
+          background: "#0c0f0f",
           display: "flex",
           flexDirection: "column",
-          gap: "32px",
+          gap: "0",
         }}
       >
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: "48px" }}>
+        {/* ── Top row: Brand + Columns ── */}
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "2fr 1fr 1fr 1fr",
+            gap: "48px",
+            paddingBottom: "64px",
+          }}
+        >
+          {/* Brand Column */}
+          <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+            <div
+              style={{
+                fontFamily: "'Playfair Display', serif",
+                fontWeight: 700,
+                fontSize: "22px",
+                letterSpacing: "-0.01em",
+                color: "#e2e2e2",
+              }}
+            >
+              MERIDIAN
+            </div>
+            <div
+              style={{
+                fontFamily: "'Inter', sans-serif",
+                fontSize: "14px",
+                lineHeight: "22px",
+                color: "#909095",
+                maxWidth: "280px",
+              }}
+            >
+              Seven agents. One verdict. Zero guesswork.
+              AI-driven investment research for those who demand precision.
+            </div>
+          </div>
+
+          {/* Product Column */}
+          <FooterCol
+            heading="Product"
+            links={[
+              { label: "Terminal", href: "/" },
+              { label: "Intelligence", href: "/intelligence" },
+              { label: "Watchlist", href: "/portfolio" },
+            ]}
+          />
+
+          {/* Legal Column */}
+          <FooterCol
+            heading="Legal"
+            links={[
+              { label: "Privacy Policy", href: "#" },
+              { label: "Terms of Service", href: "#" },
+              { label: "Disclosures", href: "#" },
+              { label: "Methodology", href: "#" },
+            ]}
+          />
+
+          {/* Connect Column */}
+          <FooterCol
+            heading="Connect"
+            links={[
+              { label: "Contact", href: "mailto:tharuntej7373@gmail.com" },
+              { label: "Creator Portfolio", href: "https://tharunportfolio.me", external: true },
+            ]}
+          />
+        </div>
+
+        {/* ── Divider ── */}
+        <div style={{ height: "1px", background: "rgba(69, 71, 75, 0.25)" }} />
+
+        {/* ── Bottom bar ── */}
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            padding: "28px 0 40px",
+            flexWrap: "wrap",
+            gap: "16px",
+          }}
+        >
+          <div
+            style={{
+              fontFamily: "'JetBrains Mono', monospace",
+              fontSize: "11px",
+              letterSpacing: "0.12em",
+              textTransform: "uppercase",
+              color: "#45474b",
+            }}
+          >
+            © {new Date().getFullYear()} Meridian
+          </div>
           <div
             style={{
               fontFamily: "'Playfair Display', serif",
-              fontWeight: 700,
-              fontSize: "24px",
-              letterSpacing: "-0.01em",
-              color: "#e2e2e2",
+              fontStyle: "italic",
+              fontSize: "14px",
+              color: "#dac769",
+              letterSpacing: "0.01em",
             }}
           >
-            MERIDIAN
+            Not financial advice. Just sharper questions.
           </div>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: "32px" }}>
-            <a
-              href="mailto:tharuntej7373@gmail.com"
-              style={{
-                fontFamily: "'Inter', sans-serif",
-                fontWeight: 600,
-                fontSize: "12px",
-                letterSpacing: "0.08em",
-                textTransform: "uppercase",
-                color: "rgba(198, 198, 203, 0.7)",
-                textDecoration: "none",
-                transition: "color 0.3s ease",
-              }}
-              onMouseEnter={(e) => ((e.currentTarget as HTMLAnchorElement).style.color = "#dac769")}
-              onMouseLeave={(e) => ((e.currentTarget as HTMLAnchorElement).style.color = "rgba(198, 198, 203, 0.7)")}
-            >
-              Contact
-            </a>
-            <a
-              href="https://tharunportfolio.me"
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{
-                fontFamily: "'Inter', sans-serif",
-                fontWeight: 600,
-                fontSize: "12px",
-                letterSpacing: "0.08em",
-                textTransform: "uppercase",
-                color: "rgba(198, 198, 203, 0.7)",
-                textDecoration: "none",
-                transition: "color 0.3s ease",
-              }}
-              onMouseEnter={(e) => ((e.currentTarget as HTMLAnchorElement).style.color = "#dac769")}
-              onMouseLeave={(e) => ((e.currentTarget as HTMLAnchorElement).style.color = "rgba(198, 198, 203, 0.7)")}
-            >
-              Creator Portfolio
-            </a>
-            {["Privacy Policy", "Terms of Service", "Disclosures", "Methodology"].map((link) => (
-              <a
-                key={link}
-                href="#"
-                style={{
-                  fontFamily: "'Inter', sans-serif",
-                  fontWeight: 600,
-                  fontSize: "12px",
-                  letterSpacing: "0.08em",
-                  textTransform: "uppercase",
-                  color: "rgba(198, 198, 203, 0.7)",
-                  textDecoration: "none",
-                  transition: "color 0.3s ease",
-                }}
-                onMouseEnter={(e) => ((e.currentTarget as HTMLAnchorElement).style.color = "#dac769")}
-                onMouseLeave={(e) => ((e.currentTarget as HTMLAnchorElement).style.color = "rgba(198, 198, 203, 0.7)")}
-              >
-                {link}
-              </a>
-            ))}
+          <div
+            style={{
+              fontFamily: "'JetBrains Mono', monospace",
+              fontSize: "11px",
+              letterSpacing: "0.08em",
+              color: "#45474b",
+            }}
+          >
+            v1.0 · AI Research Engine
           </div>
-        </div>
-        <div
-          style={{
-            fontFamily: "'Inter', sans-serif",
-            fontSize: "16px",
-            lineHeight: "24px",
-            color: "#c6c6cb",
-          }}
-        >
-          © 2024 Meridian. Institutional Grade Intelligence. Member FINRA/SIPC.
         </div>
       </footer>
     </>
+  );
+}
+
+
+function FooterCol({
+  heading,
+  links,
+}: {
+  heading: string;
+  links: { label: string; href: string; external?: boolean }[];
+}) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+      <div
+        style={{
+          fontFamily: "'Inter', sans-serif",
+          fontWeight: 600,
+          fontSize: "11px",
+          letterSpacing: "0.12em",
+          textTransform: "uppercase",
+          color: "#e2e2e2",
+        }}
+      >
+        {heading}
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+        {links.map(({ label, href, external }) => (
+          <a
+            key={label}
+            href={href}
+            target={external ? "_blank" : undefined}
+            rel={external ? "noopener noreferrer" : undefined}
+            style={{
+              fontFamily: "'Inter', sans-serif",
+              fontSize: "13px",
+              color: "#909095",
+              textDecoration: "none",
+              transition: "color 0.2s ease",
+            }}
+            onMouseEnter={(e) => ((e.currentTarget as HTMLAnchorElement).style.color = "#dac769")}
+            onMouseLeave={(e) => ((e.currentTarget as HTMLAnchorElement).style.color = "#909095")}
+          >
+            {label}
+          </a>
+        ))}
+      </div>
+    </div>
   );
 }
 

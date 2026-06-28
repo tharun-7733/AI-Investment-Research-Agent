@@ -1162,113 +1162,120 @@ export function IntelligenceReport({ result, onNewSearch, logs }: IntelligenceRe
         id="footer"
         style={{
           width: "100%",
-          padding: "64px 64px",
+          padding: "80px 64px 0",
           marginTop: "auto",
-          display: "flex",
-          flexDirection: "column",
-          gap: "32px",
           background: "#0c0f0f",
           borderTop: "1px solid rgba(69,71,75,0.2)",
+          display: "flex",
+          flexDirection: "column",
         }}
       >
+        {/* Top grid */}
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "2fr 1fr 1fr 1fr",
+            gap: "48px",
+            paddingBottom: "64px",
+          }}
+        >
+          {/* Brand */}
+          <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+            <span
+              style={{
+                fontFamily: "'Playfair Display', serif",
+                fontWeight: 700,
+                fontSize: "22px",
+                color: "#e2e2e2",
+              }}
+            >
+              MERIDIAN
+            </span>
+            <span
+              style={{
+                fontFamily: "'Inter', sans-serif",
+                fontSize: "14px",
+                lineHeight: "22px",
+                color: "#909095",
+                maxWidth: "280px",
+              }}
+            >
+              Seven agents. One verdict. Zero guesswork.
+              AI-driven investment research for those who demand precision.
+            </span>
+          </div>
+          <IRFooterCol
+            heading="Product"
+            links={[
+              { label: "Terminal", href: "/" },
+              { label: "Intelligence", href: "/intelligence" },
+              { label: "Watchlist", href: "/portfolio" },
+            ]}
+          />
+          <IRFooterCol
+            heading="Legal"
+            links={[
+              { label: "Privacy Policy", href: "#" },
+              { label: "Terms of Service", href: "#" },
+              { label: "Disclosures", href: "#" },
+              { label: "Methodology", href: "#" },
+            ]}
+          />
+          <IRFooterCol
+            heading="Connect"
+            links={[
+              { label: "Contact", href: "mailto:tharuntej7373@gmail.com" },
+              { label: "Creator Portfolio", href: "https://tharunportfolio.me", external: true },
+            ]}
+          />
+        </div>
+
+        {/* Divider */}
+        <div style={{ height: "1px", background: "rgba(69,71,75,0.25)" }} />
+
+        {/* Bottom bar */}
         <div
           style={{
             display: "flex",
-            flexWrap: "wrap",
             justifyContent: "space-between",
             alignItems: "center",
-            gap: "32px",
+            padding: "28px 0 40px",
+            flexWrap: "wrap",
+            gap: "16px",
           }}
         >
-          <span
+          <div
             style={{
-              fontFamily: "'Playfair Display', serif",
-              fontWeight: 700,
-              fontSize: "20px",
-              color: "#e2e2e2",
+              fontFamily: "'JetBrains Mono', monospace",
+              fontSize: "11px",
+              letterSpacing: "0.12em",
+              textTransform: "uppercase",
+              color: "#45474b",
             }}
           >
-            MERIDIAN
-          </span>
-          <div style={{ display: "flex", flexWrap: "wrap", gap: "24px" }}>
-            <a
-              href="mailto:tharuntej7373@gmail.com"
-              style={{
-                fontFamily: "'Inter', sans-serif",
-                fontWeight: 600,
-                fontSize: "12px",
-                letterSpacing: "0.08em",
-                textTransform: "uppercase",
-                color: "rgba(198,198,203,0.7)",
-                textDecoration: "none",
-                transition: "color 0.3s ease",
-              }}
-              onMouseEnter={(e) =>
-                ((e.currentTarget as HTMLAnchorElement).style.color = "#dac769")
-              }
-              onMouseLeave={(e) =>
-                ((e.currentTarget as HTMLAnchorElement).style.color = "rgba(198,198,203,0.7)")
-              }
-            >
-              Contact
-            </a>
-            <a
-              href="https://tharunportfolio.me"
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{
-                fontFamily: "'Inter', sans-serif",
-                fontWeight: 600,
-                fontSize: "12px",
-                letterSpacing: "0.08em",
-                textTransform: "uppercase",
-                color: "rgba(198,198,203,0.7)",
-                textDecoration: "none",
-                transition: "color 0.3s ease",
-              }}
-              onMouseEnter={(e) =>
-                ((e.currentTarget as HTMLAnchorElement).style.color = "#dac769")
-              }
-              onMouseLeave={(e) =>
-                ((e.currentTarget as HTMLAnchorElement).style.color = "rgba(198,198,203,0.7)")
-              }
-            >
-              Creator Portfolio
-            </a>
-            {["Privacy Policy", "Terms of Service", "Disclosures", "Methodology"].map((link) => (
-              <a
-                key={link}
-                href="#"
-                style={{
-                  fontFamily: "'Inter', sans-serif",
-                  fontWeight: 600,
-                  fontSize: "12px",
-                  letterSpacing: "0.08em",
-                  textTransform: "uppercase",
-                  color: "rgba(198,198,203,0.7)",
-                  textDecoration: "none",
-                  transition: "color 0.3s ease",
-                }}
-                onMouseEnter={(e) =>
-                  ((e.currentTarget as HTMLAnchorElement).style.color = "#dac769")
-                }
-                onMouseLeave={(e) =>
-                  ((e.currentTarget as HTMLAnchorElement).style.color = "rgba(198,198,203,0.7)")
-                }
-              >
-                {link}
-              </a>
-            ))}
+            © {new Date().getFullYear()} Meridian
           </div>
-        </div>
-        <div
-          style={{
-            fontFamily: "'Inter', sans-serif",
-            fontSize: "14px",
-            color: "#c6c6cb",
-          }}
-        >
-          © 2024 Meridian. Institutional Grade Intelligence. Member FINRA/SIPC.
+          <div
+            style={{
+              fontFamily: "'Playfair Display', serif",
+              fontStyle: "italic",
+              fontSize: "14px",
+              color: "#dac769",
+              letterSpacing: "0.01em",
+            }}
+          >
+            Not financial advice. Just sharper questions.
+          </div>
+          <div
+            style={{
+              fontFamily: "'JetBrains Mono', monospace",
+              fontSize: "11px",
+              letterSpacing: "0.08em",
+              color: "#45474b",
+            }}
+          >
+            v1.0 · AI Research Engine
+          </div>
         </div>
       </footer>
     </div>
@@ -1276,6 +1283,53 @@ export function IntelligenceReport({ result, onNewSearch, logs }: IntelligenceRe
 }
 
 /* ── Sub-components ────────────────────────────────────────────────────────── */
+
+function IRFooterCol({
+  heading,
+  links,
+}: {
+  heading: string;
+  links: { label: string; href: string; external?: boolean }[];
+}) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+      <div
+        style={{
+          fontFamily: "'Inter', sans-serif",
+          fontWeight: 600,
+          fontSize: "11px",
+          letterSpacing: "0.12em",
+          textTransform: "uppercase",
+          color: "#e2e2e2",
+        }}
+      >
+        {heading}
+      </div>
+      <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+        {links.map(({ label, href, external }) => (
+          <a
+            key={label}
+            href={href}
+            target={external ? "_blank" : undefined}
+            rel={external ? "noopener noreferrer" : undefined}
+            style={{
+              fontFamily: "'Inter', sans-serif",
+              fontSize: "13px",
+              color: "#909095",
+              textDecoration: "none",
+              transition: "color 0.2s ease",
+            }}
+            onMouseEnter={(e) => ((e.currentTarget as HTMLAnchorElement).style.color = "#dac769")}
+            onMouseLeave={(e) => ((e.currentTarget as HTMLAnchorElement).style.color = "#909095")}
+          >
+            {label}
+          </a>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 
 function ScoreBar({ label, value, weight }: { label: string; value: number; weight: string }) {
   const pct = (value / 10) * 100;
