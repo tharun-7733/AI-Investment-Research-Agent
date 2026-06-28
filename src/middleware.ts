@@ -32,11 +32,19 @@ export async function middleware(request: NextRequest) {
 
   const { pathname } = request.nextUrl;
 
-  // Redirect unauthenticated users to login page
-  if (!user && pathname !== "/login") {
-    const url = request.nextUrl.clone();
-    url.pathname = "/login";
-    return NextResponse.redirect(url);
+  // Redirect unauthenticated users
+  if (!user) {
+    // If it's an API request, return 401 instead of redirecting
+    if (pathname.startsWith("/api")) {
+      return NextResponse.json({ error: "Unauthorized. Please log in." }, { status: 401 });
+    }
+    
+    // For page requests, allow home page and login page
+    if (pathname !== "/" && pathname !== "/login") {
+      const url = request.nextUrl.clone();
+      url.pathname = "/login";
+      return NextResponse.redirect(url);
+    }
   }
 
   // Redirect logged-in users away from login page

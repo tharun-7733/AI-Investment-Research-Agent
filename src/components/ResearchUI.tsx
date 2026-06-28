@@ -29,6 +29,14 @@ export function ResearchUI() {
   }, []);
 
   const handleAnalyze = async (company: string) => {
+    // Check auth before starting UI transition
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) {
+      window.location.href = "/login";
+      return;
+    }
+
     setAppState("analyzing");
     setCompanyQuery(company);
     setLogs(["◈ MERIDIAN — Initializing research pipeline..."]);
@@ -48,6 +56,10 @@ export function ResearchUI() {
       });
 
       if (!res.ok) {
+        if (res.status === 401) {
+          window.location.href = "/login";
+          return;
+        }
         const err = await res.json().catch(() => ({ error: "Unknown error" }));
         throw new Error(err.error || "Request failed");
       }
