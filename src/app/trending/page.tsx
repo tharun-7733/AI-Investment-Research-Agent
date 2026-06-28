@@ -51,6 +51,54 @@ const BOOMING_COMPANIES = [
     description: "The primary challenger to Nvidia's AI dominance. Their MI300X accelerators are gaining traction among cost-conscious hyperscalers.",
     catalyst: "Data centers seeking competitive alternatives to Nvidia.",
     color: "#a8cfbd"
+  },
+  {
+    name: "Microsoft",
+    ticker: "MSFT",
+    category: "Cloud / Enterprise AI",
+    description: "The biggest investor in OpenAI. Successfully integrating AI (Copilot) into Azure cloud services and enterprise software worldwide.",
+    catalyst: "Massive enterprise adoption of AI Copilot and Azure OpenAI services.",
+    color: "#dac769"
+  },
+  {
+    name: "Meta Platforms",
+    ticker: "META",
+    category: "Social Media / AI Research",
+    description: "Pioneering open-source AI with the Llama models. Utilizing massive proprietary AI compute clusters to dominate targeted advertising and engagement.",
+    catalyst: "Open-source AI dominance and highly efficient AI-driven ad targeting.",
+    color: "#ffb4ab"
+  },
+  {
+    name: "Taiwan Semiconductor",
+    ticker: "TSM",
+    category: "Semiconductor Foundry",
+    description: "The world's largest dedicated independent semiconductor foundry. They physically manufacture the cutting-edge chips designed by Nvidia, AMD, and Apple.",
+    catalyst: "Absolute monopoly on the highest-yield 3nm and 5nm chip manufacturing.",
+    color: "#a8cfbd"
+  },
+  {
+    name: "Broadcom",
+    ticker: "AVGO",
+    category: "Networking / Custom Silicon",
+    description: "The critical networking backbone for AI data centers. Designing custom ASIC chips for hyperscalers like Google (TPUs) to bypass Nvidia.",
+    catalyst: "Explosive demand for AI networking (Ethernet/Tomahawk) and custom silicon.",
+    color: "#dac769"
+  },
+  {
+    name: "CrowdStrike",
+    ticker: "CRWD",
+    category: "Cybersecurity",
+    description: "Cloud-native endpoint protection. Utilizing AI-driven threat detection to secure the massive new attack surfaces created by AI infrastructure.",
+    catalyst: "Enterprise security budgets expanding to cover AI-related vulnerabilities.",
+    color: "#ffb4ab"
+  },
+  {
+    name: "Alphabet",
+    ticker: "GOOGL",
+    category: "Cloud / Consumer AI",
+    description: "The creators of transformers. Integrating Gemini models across search, YouTube, and GCP, while designing their own custom TPU hardware.",
+    catalyst: "Vertical integration of AI from custom hardware (TPUs) up to consumer applications.",
+    color: "#a8cfbd"
   }
 ];
 
