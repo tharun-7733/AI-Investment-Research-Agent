@@ -1,73 +1,69 @@
-# MERIDIAN — AI Investment Research Agent
+# Meridian — AI Investment Research Agent
 
-<div align="center">
+![Next.js](https://img.shields.io/badge/Next.js-16.2.9-black?logo=nextdotjs)
+![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue?logo=typescript)
+![LangGraph](https://img.shields.io/badge/LangGraph-1.4.7-orange)
+![Groq](https://img.shields.io/badge/Groq-Llama--3.3--70B-red)
+![Supabase](https://img.shields.io/badge/Supabase-Auth%20%2B%20DB-green?logo=supabase)
+![License](https://img.shields.io/badge/License-MIT-yellow)
 
-![Next.js](https://img.shields.io/badge/Next.js-16.2.9-black?style=for-the-badge&logo=nextdotjs)
-![TypeScript](https://img.shields.io/badge/TypeScript-5.0-blue?style=for-the-badge&logo=typescript)
-![LangGraph](https://img.shields.io/badge/LangGraph-1.4.7-orange?style=for-the-badge)
-![Groq](https://img.shields.io/badge/Groq-Llama--3.3--70B-red?style=for-the-badge)
-![Supabase](https://img.shields.io/badge/Supabase-Auth%20%2B%20DB-green?style=for-the-badge&logo=supabase)
-![License](https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge)
+Meridian is a small research agent I built to answer one question quickly: "should I even be looking at this company?" You type in a name, seven LLM-driven agents go off and do their thing, and about a minute later you get back a structured verdict — INVEST, WATCH, or PASS — along with the reasoning behind it.
 
-**Seven specialized AI agents. One investment verdict. Under a minute.**
+It's not investment advice, and it won't replace actually reading a 10-K. Think of it more as a first-pass filter that asks sharper questions than you'd get from a quick Google search.
 
-*Not financial advice. Just sharper questions.*
-
-[Live Demo](#) · [Report a Bug](https://github.com/tharun-7733/AI-Investment-Research-Agent/issues) · [Request Feature](https://github.com/tharun-7733/AI-Investment-Research-Agent/issues)
-
-</div>
+[Live Demo](#) · [Report a Bug](https://github.com/tharun-7733/AI-Investment-Research-Agent/issues) · [Request a Feature](https://github.com/tharun-7733/AI-Investment-Research-Agent/issues)
 
 ---
 
-## 📋 Table of Contents
+## Table of Contents
 
-- [Overview](#-overview)
-- [Features](#-features)
-- [Architecture](#-architecture)
-- [Agent Workflow](#-agent-workflow)
-- [Tech Stack](#-tech-stack)
-- [Project Structure](#-project-structure)
-- [Installation](#-installation)
-- [Environment Variables](#-environment-variables)
-- [How to Run](#-how-to-run)
-- [Example Outputs](#-example-outputs)
-- [Challenges Faced](#-challenges-faced)
-- [Design Decisions](#-design-decisions)
-- [Future Improvements](#-future-improvements)
-- [License](#-license)
-
----
-
-## 🔭 Overview
-
-**Meridian** is a full-stack AI investment research platform that deploys a network of seven specialized LangGraph agents to analyze any public or private company — and delivers a structured investment verdict in under 60 seconds.
-
-Type a company name. The agent network fans out: one node resolves the entity, two run in parallel (web intelligence + financial extraction), the results converge into a competitive analysis and synthesis, and a final committee-style decision node issues an `INVEST`, `WATCH`, or `PASS` verdict with a confidence score.
-
-Every analysis is streamed live to the UI, persisted to a Supabase database under your account, and surfaced in an interactive Intelligence Report with score breakdowns, moat analysis, and a full markdown brief.
-
-**It works for public companies** (NVIDIA, Apple) using real Alpha Vantage financial data, **and private companies** (Zepto, SpaceX) using LLM-estimated industry benchmarks.
+- [What it does](#what-it-does)
+- [Features](#features)
+- [How it's built](#how-its-built)
+- [The agent pipeline](#the-agent-pipeline)
+- [Tech stack](#tech-stack)
+- [Project structure](#project-structure)
+- [Getting it running](#getting-it-running)
+- [Environment variables](#environment-variables)
+- [Running the app](#running-the-app)
+- [What the output looks like](#what-the-output-looks-like)
+- [Problems I ran into](#problems-i-ran-into)
+- [Why I made these choices](#why-i-made-these-choices)
+- [What's next](#whats-next)
+- [License](#license)
 
 ---
 
-## ✨ Features
+## What it does
 
-| Feature | Description |
+Meridian is a full-stack app that runs a company through a network of seven LangGraph agents and comes back with a structured investment verdict — usually in under a minute.
+
+Here's roughly what happens under the hood: one node figures out who the company actually is, then two more run in parallel — one pulling in web intelligence, the other pulling financial data. Those results feed into a competitive analysis step, then a synthesis step, and finally a decision node that acts like a mini investment committee, weighing everything and handing back a verdict with a confidence score.
+
+You can watch all of this happen live in the UI as it streams in, and once it's done, the report gets saved to your account in Supabase so you can come back to it later. Each report includes a score breakdown, a look at the company's competitive moat, and a full written brief.
+
+It works for public companies like NVIDIA or Apple, where it pulls real numbers from Alpha Vantage, and it also works for private companies like Zepto or SpaceX — in those cases it leans on the LLM to estimate financials based on industry benchmarks, and flags them clearly as estimates.
+
+---
+
+## Features
+
+| Feature | What it means |
 |---|---|
-| 🤖 **7-Node Agent Pipeline** | A LangGraph DAG with fan-out parallelism: identifier → [webSearch ‖ financials] → competitive → synthesis → decision → reporter |
-| ⚡ **Streaming Live Trace** | Every agent logs to a real-time terminal-style UI via Server-Sent Events (SSE) |
-| 📊 **Weighted Scoring Model** | 5-dimension score: Growth (25%) + Moat (20%) + Financial Health (25%) + Sentiment (15%) + Valuation (15%) |
-| 🔐 **JWT Authentication** | Supabase Auth with `@supabase/ssr` — session stored in HTTP-only cookies, guarded by Next.js middleware |
-| 💾 **Report Persistence** | Every completed analysis auto-saved to Supabase Postgres with Row Level Security |
-| 📚 **Intelligence Page** | Full history of all saved analyses per user — view, browse, delete |
-| 👀 **Watchlist Page** | All analyzed companies at a glance — latest verdict, score bar, re-analyze in one click |
-| 🌐 **Tavily Web Search** | Real-time web intelligence via Tavily API for news, sentiment, and key developments |
-| 💹 **Alpha Vantage Integration** | Live financial data: market cap, P/E ratio, gross margin, debt/equity, 52-week range |
-| 🎨 **Premium Dark UI** | Playfair Display serif headers, JetBrains Mono terminal, gold accent (#dac769), glassmorphism nav |
+| **7-node agent pipeline** | A LangGraph DAG that fans out and back in: identifier → [web search ‖ financials] → competitive → synthesis → decision → reporter |
+| **Live streaming trace** | Watch each agent's progress in a terminal-style UI, pushed over Server-Sent Events |
+| **Weighted scoring** | Five dimensions — growth (25%), moat (20%), financial health (25%), sentiment (15%), valuation (15%) |
+| **Auth via Supabase** | JWT sessions in HTTP-only cookies, with Next.js middleware guarding protected routes |
+| **Reports get saved** | Every finished analysis is written to Postgres with Row Level Security so it's tied to your account |
+| **Intelligence page** | Browse, revisit, or delete past analyses |
+| **Watchlist** | See all the companies you've looked at, with the latest verdict and a one-click re-analyze |
+| **Web search via Tavily** | Pulls recent news and sentiment context |
+| **Financials via Alpha Vantage** | Market cap, P/E, gross margin, debt/equity, 52-week range |
+| **Dark UI** | Playfair Display for headers, JetBrains Mono for the terminal feel, a gold accent, glassmorphism nav |
 
 ---
 
-## 🏗 Architecture
+## How it's built
 
 ```
 ┌──────────────────────────────────────────────────────────────────────────┐
@@ -110,37 +106,37 @@ Every analysis is streamed live to the UI, persisted to a Supabase database unde
 └──────────────────────────────────────────────────────────────────────────┘
 ```
 
-### Data Flow
+### Data flow, in short
 
 ```
-User Input (company name)
+User types a company name
       ↓
-SSE API Route (/api/research)
+SSE API route (/api/research)
       ↓
-LangGraph Graph Execution (streaming)
-      ↓ (log events streamed to client in real-time)
-AgentTrace UI (live terminal)
-      ↓ (on completion)
-IntelligenceReport UI (full structured report)
-      ↓ (auto-saved)
-Supabase DB (reports table, RLS-protected)
+LangGraph runs the graph, streaming as it goes
       ↓
-Intelligence Page / Watchlist Page
+Live log events show up in the terminal UI
+      ↓
+Once finished, the full report renders
+      ↓
+Report auto-saves to Supabase (RLS-protected)
+      ↓
+Shows up on the Intelligence page and Watchlist
 ```
 
 ---
 
-## 🤖 Agent Workflow
+## The agent pipeline
 
-The pipeline is a **directed acyclic graph (DAG)** with one fan-out and one fan-in:
+The whole thing is a directed acyclic graph — one fan-out, one fan-in:
 
 ```
 START
   │
   ▼
 [1] IdentifierNode
-    ├─ Resolves company name → full entity metadata
-    ├─ Extracts: ticker, exchange, sector, industry, country, isPublic
+    ├─ Resolves the company name into full entity metadata
+    ├─ Pulls out: ticker, exchange, sector, industry, country, isPublic
     └─ Output: CompanyInfo
 
   ┌────────────────────┬──────────────────────┐
@@ -154,23 +150,22 @@ START
            │                      │           │
            ▼                      │           │
 [4] CompetitiveNode               │           │
-    ├─ Uses WebAnalysis context   │           │
-    ├─ Maps competitors, moat     │           │
+    ├─ Uses the WebAnalysis context           │
+    ├─ Maps out competitors and moat          │
     └─ Output: CompetitiveAnalysis│           │
            │                      │           │
            └──────────┬───────────┘           │
                       ▼                       │
              [5] SynthesisNode                │
-                 ├─ Aggregates all 4 outputs  │
-                 ├─ Scores 5 dimensions (1-10)│
-                 ├─ Calculates weighted total │
-                 └─ Output: DimensionScores + │
-                            SynthesisRationales
+                 ├─ Pulls together all 4 prior outputs
+                 ├─ Scores 5 dimensions (1–10)
+                 ├─ Calculates the weighted total
+                 └─ Output: DimensionScores + SynthesisRationales
 
                       │
                       ▼
              [6] DecisionNode
-                 ├─ Thresholds: INVEST≥7.0, WATCH≥5.5, PASS<5.5
+                 ├─ Thresholds: INVEST ≥ 7.0, WATCH ≥ 5.5, PASS < 5.5
                  ├─ Generates: verdict, confidence, timeHorizon
                  ├─ Writes: headline, investThesis, watchFor[]
                  └─ comparableTo: "This company is like X because..."
@@ -178,73 +173,73 @@ START
                       │
                       ▼
              [7] ReporterNode
-                 ├─ Compiles full markdown intelligence brief
+                 ├─ Writes up the full markdown brief
                  └─ Output: report (Markdown)
 
                       │
                      END
 ```
 
-### Scoring Model
+### How the scoring works
 
-| Dimension | Weight | Data Source |
+| Dimension | Weight | Where it comes from |
 |---|---|---|
 | Growth | 25% | Web analysis, financial trends |
-| Financial Health | 25% | Alpha Vantage + LLM analysis |
-| Moat | 20% | Competitive node (LLM) |
-| Sentiment | 15% | Tavily web search, news |
-| Valuation | 15% | P/E ratio, market cap, risk |
-| **Weighted Total** | — | Σ (score × weight) |
+| Financial Health | 25% | Alpha Vantage data + LLM analysis |
+| Moat | 20% | Competitive node (LLM judgment) |
+| Sentiment | 15% | Tavily web search, recent news |
+| Valuation | 15% | P/E ratio, market cap, risk factors |
+| **Weighted Total** | — | Sum of (score × weight) |
 
-### Verdict Thresholds
+### How the verdict gets decided
 
 | Verdict | Condition |
 |---|---|
-| `INVEST` | `weightedTotal ≥ 7.0` AND no critical red flags |
-| `WATCH` | `weightedTotal ≥ 5.5 AND < 7.0` OR score ≥ 7 with red flags |
-| `PASS` | `weightedTotal < 5.5` OR critical structural risks |
+| `INVEST` | Weighted total ≥ 7.0, and no critical red flags |
+| `WATCH` | Weighted total between 5.5 and 7.0, or ≥ 7 but with red flags |
+| `PASS` | Weighted total under 5.5, or serious structural risks |
 
 ---
 
-## 🛠 Tech Stack
+## Tech stack
 
 ### Frontend
-| Technology | Version | Purpose |
+| Technology | Version | Used for |
 |---|---|---|
 | Next.js | 16.2.9 | App Router, SSE API routes, SSR |
 | React | 19.2.4 | UI components |
-| TypeScript | 5.x | Type safety across all nodes and state |
+| TypeScript | 5.x | Type safety throughout |
 | Tailwind CSS | 4.x | Utility classes |
-| react-markdown | 10.x | Renders the AI-generated report markdown |
-| Recharts | 3.x | Score visualization charts |
+| react-markdown | 10.x | Renders the AI-generated report |
+| Recharts | 3.x | Score visualization |
 
-### AI / Agent Layer
-| Technology | Version | Purpose |
+### AI / agent layer
+| Technology | Version | Used for |
 |---|---|---|
-| LangGraph (`@langchain/langgraph`) | 1.4.7 | Multi-node agent DAG with fan-out/fan-in |
-| LangChain Core | 1.2.1 | Base abstractions for LLM calls |
-| `@langchain/groq` | 1.3.1 | Groq API client for Llama 3.3 70B |
-| Groq / Llama-3.3-70B-Versatile | — | LLM backbone for all 7 nodes |
+| LangGraph (`@langchain/langgraph`) | 1.4.7 | The multi-node agent DAG, fan-out/fan-in |
+| LangChain Core | 1.2.1 | Base LLM abstractions |
+| `@langchain/groq` | 1.3.1 | Groq client for Llama 3.3 70B |
+| Groq / Llama-3.3-70B-Versatile | — | The LLM behind all 7 nodes |
 
 ### External APIs
 | API | Purpose |
 |---|---|
-| **Tavily** | Real-time web search and news intelligence |
-| **Alpha Vantage** | Public company financial data (P/E, market cap, margins, D/E) |
-| **Groq** | Ultra-fast LLM inference (Llama 3.3 70B) |
+| **Tavily** | Real-time web search and news |
+| **Alpha Vantage** | Public company financials (P/E, market cap, margins, D/E) |
+| **Groq** | Fast LLM inference |
 
-### Backend / Auth / Database
+### Backend / auth / database
 | Technology | Purpose |
 |---|---|
-| Supabase (`@supabase/supabase-js`) | PostgreSQL database + Auth |
-| `@supabase/ssr` | Server-side Supabase client for Next.js cookies |
-| Next.js Middleware | Route protection — redirects unauthenticated users to `/login` |
-| Supabase Row Level Security (RLS) | Per-user data isolation at the database level |
-| JWT (via Supabase Auth) | Session token stored in HTTP-only cookies |
+| Supabase (`@supabase/supabase-js`) | Postgres database + auth |
+| `@supabase/ssr` | Server-side Supabase client for Next.js |
+| Next.js Middleware | Redirects unauthenticated users to `/login` |
+| Supabase RLS | Keeps each user's data isolated at the DB level |
+| JWT (via Supabase Auth) | Session token in HTTP-only cookies |
 
 ---
 
-## 📁 Project Structure
+## Project structure
 
 ```
 ai-investment-research-agent/
@@ -311,41 +306,41 @@ ai-investment-research-agent/
 
 ---
 
-## 📦 Installation
+## Getting it running
 
-### Prerequisites
+### You'll need
 
-- **Node.js** ≥ 18
-- **npm** ≥ 9
-- Accounts and API keys for:
+- Node.js ≥ 18
+- npm ≥ 9
+- API keys from:
   - [Groq](https://console.groq.com) — free tier available
-  - [Tavily](https://tavily.com) — free tier (1,000 searches/month)
-  - [Alpha Vantage](https://www.alphavantage.co) — free tier (25 requests/day)
+  - [Tavily](https://tavily.com) — free tier gives you 1,000 searches/month
+  - [Alpha Vantage](https://www.alphavantage.co) — free tier gives you 25 requests/day
   - [Supabase](https://supabase.com) — free tier
 
 ### Steps
 
 ```bash
-# 1. Clone the repository
+# 1. Clone the repo
 git clone https://github.com/tharun-7733/AI-Investment-Research-Agent.git
 cd AI-Investment-Research-Agent
 
 # 2. Install dependencies
-# NOTE: --legacy-peer-deps is required due to peer dependency conflicts
-# between @langchain/community and @browserbasehq/stagehand
+# You'll need --legacy-peer-deps here — @langchain/community and
+# @browserbasehq/stagehand have a peer dependency conflict
 npm install --legacy-peer-deps
 
-# 3. Set up environment variables
+# 3. Set up your environment variables
 cp .env.example .env
-# Edit .env with your API keys (see section below)
+# then fill in your keys (see below)
 
-# 4. Set up Supabase database
-# Run the SQL schema in your Supabase SQL Editor (see supabase_schema.sql)
+# 4. Set up the Supabase database
+# Run the SQL schema below in your Supabase SQL Editor
 ```
 
-### Supabase Schema
+### Supabase schema
 
-Run this in the [Supabase SQL Editor](https://supabase.com/dashboard) → **New Query**:
+Paste this into the [Supabase SQL Editor](https://supabase.com/dashboard) under New Query:
 
 ```sql
 -- Create reports table
@@ -382,7 +377,7 @@ CREATE POLICY "Users can delete own reports"
 
 ---
 
-## 🔑 Environment Variables
+## Environment variables
 
 Create a `.env` file in the project root:
 
@@ -408,26 +403,26 @@ NEXT_PUBLIC_SUPABASE_URL=https://your-project-ref.supabase.co
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=sb_publishable_xxxxxxxxxxxx
 ```
 
-> **⚠️ Never commit your `.env` file.** It is already in `.gitignore`.
+> Don't commit your `.env` file — it's already in `.gitignore`, but worth double-checking.
 
-| Variable | Required | Notes |
+| Variable | Required? | Notes |
 |---|---|---|
-| `GROQ_API_KEY` | ✅ Yes | Without this, all LLM calls will fail |
-| `TAVILY_API_KEY` | ✅ Yes | Without this, web search node returns empty |
-| `ALPHA_VANTAGE_KEY` | ⚠️ Optional | Gracefully falls back to LLM estimation if missing |
-| `NEXT_PUBLIC_SUPABASE_URL` | ✅ Yes | Required for auth and report persistence |
-| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | ✅ Yes | Required for auth and report persistence |
+| `GROQ_API_KEY` | Yes | Without it, every LLM call fails |
+| `TAVILY_API_KEY` | Yes | Without it, the web search node comes back empty |
+| `ALPHA_VANTAGE_KEY` | Optional | Falls back to LLM estimation if it's missing |
+| `NEXT_PUBLIC_SUPABASE_URL` | Yes | Needed for auth and saving reports |
+| `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` | Yes | Needed for auth and saving reports |
 
 ---
 
-## 🚀 How to Run
+## Running the app
 
 ```bash
 # Development server (with hot reload)
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000).
+Then open [http://localhost:3000](http://localhost:3000).
 
 ```bash
 # Type-check without emitting
@@ -441,21 +436,21 @@ npm run build
 npm run start
 ```
 
-### First Run Checklist
+### First run checklist
 
-- [ ] `.env` file populated with all required keys
-- [ ] Supabase schema executed (reports table created)
+- [ ] `.env` filled out with all required keys
+- [ ] Supabase schema run (reports table exists)
 - [ ] Dev server running on port 3000
-- [ ] Navigate to `/login` to create your account
-- [ ] Type any company name in the terminal search bar
-- [ ] Watch the 7-node pipeline execute live
-- [ ] View your report in **Intelligence** → saved automatically
+- [ ] Head to `/login` and create an account
+- [ ] Type a company name into the terminal search bar
+- [ ] Watch the 7-node pipeline run live
+- [ ] Check the **Intelligence** page — your report should already be saved
 
 ---
 
-## 📊 Example Outputs
+## What the output looks like
 
-### Terminal Log (live stream)
+### The live terminal log
 
 ```
 ◈ MERIDIAN — Initializing research pipeline...
@@ -472,7 +467,7 @@ npm run start
 ◈ BRIEF COMPILED
 ```
 
-### Verdict Output (JSON shape)
+### The verdict, as JSON
 
 ```json
 {
@@ -500,65 +495,52 @@ npm run start
 
 ---
 
-## 🧠 Challenges Faced
+## Problems I ran into
 
-### 1. LLM JSON Parsing Reliability
-The most persistent challenge. Groq/Llama outputs would occasionally wrap JSON in markdown fences (` ```json `), add trailing commas, or truncate mid-object. The solution was a robust `safeParseLlmJson()` utility that strips fences, trims whitespace, attempts direct `JSON.parse`, and logs the raw string on failure for debugging.
+**Getting the LLM to output clean JSON, reliably.** This was probably the most annoying part. Groq/Llama would sometimes wrap its JSON in markdown fences, throw in a trailing comma, or just cut off mid-object. I ended up writing a `safeParseLlmJson()` helper that strips the fences, trims whitespace, tries a direct `JSON.parse`, and logs the raw string when it still fails so I can see what went wrong.
 
-### 2. LangGraph Fan-in Synchronization
-The graph has two branches (`webSearch` and `financials`) that must both complete before `synthesisNode` runs. LangGraph handles this with its `StateGraph` edge model, but the state reducers needed careful configuration — using object spread reducers (`(curr, update) => ({ ...curr, ...update })`) so partial updates from each parallel branch merge correctly.
+**Making sure the parallel branches actually finish before merging.** The `webSearch` and `financials` nodes run in parallel, and both need to finish before `synthesisNode` can run. LangGraph's `StateGraph` handles the sequencing, but I had to be careful with how the state reducers were set up — using an object-spread reducer (`(curr, update) => ({ ...curr, ...update })`) so partial updates from each branch merge correctly instead of overwriting each other.
 
-### 3. Private Company Financial Data
-Alpha Vantage only has data for publicly listed tickers. For private companies (e.g. Zepto, OpenAI), the `financialsNode` detects a null ticker and instructs the LLM to estimate based on industry benchmarks — setting `estimated: true` in the output so the UI can display a caveat.
+**Private companies don't have public financials.** Alpha Vantage only covers listed tickers, so for private companies like Zepto or OpenAI, the `financialsNode` checks for a null ticker and asks the LLM to estimate based on industry benchmarks instead — and flags the output with `estimated: true` so the UI can show a caveat.
 
-### 4. Streaming Architecture
-Next.js 16 App Router API routes don't natively expose `res.write()`. Instead, the route uses a `ReadableStream` with a `TransformStream`-based SSE encoder. The LangGraph stream events (logs, result, done) are serialized as `data: {...}\n\n` and parsed on the client with a manual SSE reader loop over `response.body.getReader()`.
+**Streaming in the Next.js App Router.** API routes in Next.js 16 don't give you a plain `res.write()`. Instead I used a `ReadableStream` with a `TransformStream`-based SSE encoder, serialized the LangGraph events as `data: {...}\n\n`, and read them back on the client with a manual loop over `response.body.getReader()`.
 
-### 5. Supabase SSR with Next.js App Router
-The `@supabase/ssr` package requires separate browser and server client factories. Using a single client for both caused session loss during SSR. The fix was creating `client.ts` (browser, uses `createBrowserClient`) and `server.ts` (uses `createServerClient` with Next.js `cookies()` adapter).
+**Supabase SSR and session handling.** `@supabase/ssr` wants separate client factories for browser and server — trying to use one client for both caused sessions to get lost during SSR. Fixed by splitting into `client.ts` (uses `createBrowserClient`) and `server.ts` (uses `createServerClient` with Next.js's `cookies()` adapter).
 
-### 6. Dependency Conflicts
-`@langchain/community@1.1.29` has a peer dependency conflict with `@browserbasehq/stagehand`. This requires `npm install --legacy-peer-deps` as a workaround.
+**A dependency conflict that won't go away.** `@langchain/community@1.1.29` conflicts with `@browserbasehq/stagehand` on a peer dependency, so `npm install --legacy-peer-deps` is required for now.
 
 ---
 
-## 🎯 Design Decisions
+## Why I made these choices
 
-### Why LangGraph over a simple sequential chain?
-The parallelism is the key value: `webSearch` and `financials` run simultaneously, cutting the end-to-end latency by ~40% compared to a sequential pipeline. LangGraph's typed `Annotation` state also enforces a clear contract between nodes — each node knows exactly what it receives and what it must return.
+**LangGraph instead of a simple sequential chain.** The parallelism is really the whole point — `webSearch` and `financials` run at the same time, which cuts total latency by roughly 40% compared to running them one after another. LangGraph's typed `Annotation` state also forces a clear contract between nodes, so each one knows exactly what it's getting and what it needs to hand off.
 
-### Why Groq + Llama 3.3 70B?
-Two reasons: speed and cost. Groq's LPU inference is significantly faster than OpenAI/Anthropic for a streaming use case, and Llama 3.3 70B is capable enough for structured JSON extraction tasks with `temperature: 0`. The original implementation used Google Gemini Flash 2.0, but Groq offered lower latency at equivalent quality.
+**Groq + Llama 3.3 70B.** Mostly speed and cost. Groq's inference is noticeably faster than OpenAI or Anthropic for a streaming use case like this, and Llama 3.3 70B is good enough at structured JSON extraction when you run it at `temperature: 0`. I actually started with Gemini Flash 2.0, but switched once Groq turned out to be faster at a similar quality level.
 
-### Why Server-Sent Events instead of WebSockets?
-SSE is simpler to implement in Next.js App Router API routes (no upgrade handshake, works over HTTP/1.1), unidirectional (we only stream server→client), and automatically reconnects. WebSockets would be overkill for this use case.
+**Server-Sent Events over WebSockets.** SSE is just simpler here — no upgrade handshake, works fine over HTTP/1.1, reconnects on its own, and I only ever need to stream server → client anyway. WebSockets would've been more machinery than the problem needed.
 
-### Why inline styles over Tailwind for components?
-The UI uses `Tailwind` for utility classes but relies on inline styles for dynamic values (e.g. animated widths, conditional border colors). This avoids the need for `arbitrary value` classes (`w-[${pct}%]`) which don't purge correctly and can't be computed at runtime with CSS custom properties alone.
+**Inline styles alongside Tailwind.** Tailwind handles the utility classes, but for dynamic values — animated widths, conditional border colors — I use inline styles instead. Arbitrary-value classes like `w-[${pct}%]` don't purge properly and can't be computed at runtime from CSS custom properties alone.
 
-### Why Supabase over a custom backend?
-Supabase provides Postgres + Auth + RLS in one managed service. The Row Level Security policies enforce data isolation at the database level — even if application code has a bug, a user cannot read another user's reports. This is the right security primitive for a multi-tenant application.
+**Supabase instead of a custom backend.** It bundles Postgres, auth, and RLS into one managed service, and Row Level Security enforces data isolation at the database level — so even if there's a bug in the app code, one user still can't read another user's reports. For a multi-tenant app, that felt like the right place to put that guarantee.
 
 ---
 
-## 🔮 Future Improvements
+## What's next
 
-| Priority | Feature | Description |
+| Priority | Feature | What it'd do |
 |---|---|---|
-| 🔴 High | **Portfolio Tracking** | Track price movements of INVEST verdicts against actual market performance |
-| 🔴 High | **Re-analysis Scheduling** | Auto re-analyze watchlist companies on a weekly schedule |
-| 🟡 Medium | **Comparative Analysis** | Side-by-side report for two companies (e.g. NVIDIA vs AMD) |
-| 🟡 Medium | **PDF Export** | Export full intelligence report as a formatted PDF |
-| 🟡 Medium | **SEC Filings Integration** | Pull 10-K/10-Q data directly from EDGAR for deeper financial analysis |
-| 🟢 Low | **Email Alerts** | Notify user when watchlist company has a significant sentiment shift |
-| 🟢 Low | **Custom Scoring Weights** | Let users adjust the dimension weights based on their investment style |
-| 🟢 Low | **Team Workspaces** | Shared report libraries for investment teams |
-| 🟢 Low | **API Mode** | Expose the agent pipeline as a REST API for programmatic access |
+| High | Portfolio tracking | Track how INVEST verdicts actually perform against the market over time |
+| High | Scheduled re-analysis | Auto re-run watchlist companies on a weekly cadence |
+| Medium | Side-by-side comparisons | Compare two companies directly (e.g. NVIDIA vs AMD) |
+| Medium | PDF export | Export a full report as a formatted PDF |
+| Medium | SEC filings integration | Pull 10-K/10-Q data from EDGAR for deeper financial analysis |
+| Low | Email alerts | Notify when a watchlist company has a significant sentiment shift |
+| Low | Custom scoring weights | Let users tune the dimension weights to match their own investment style |
+| Low | Team workspaces | Shared report libraries for investment teams |
+| Low | API mode | Expose the pipeline as a REST API for programmatic use |
 
-<div align="center">
+---
 
-Built with precision by **[Tharun Tej](https://tharunportfolio.me)**
+Built by **[Tharun Tej](https://tharunportfolio.me)**
 
 *Not financial advice. Just sharper questions.*
-
-</div>
