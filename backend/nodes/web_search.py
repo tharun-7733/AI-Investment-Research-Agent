@@ -56,8 +56,9 @@ async def web_search_node(state: AgentState) -> dict:
         if queries:
             search_results = await run_multiple_searches(queries)
             if search_results:
+                search_results = search_results[:10]  # Limit to top 10 results
                 search_results_str = "\n\n---\n\n".join(
-                    f"Title: {r['title']}\nURL: {r['url']}\nContent: {r['content']}"
+                    f"Title: {r['title']}\nURL: {r['url']}\nContent: {r['content'][:1000]}"
                     for r in search_results
                 )
 
