@@ -89,7 +89,7 @@ Research data:
 
 Score each dimension 1-10 strictly based on data above.
 Then calculate weightedTotal using:
-Growth x 0.25 + Moat x 0.20 + FinancialHealth x 0.25 + Sentiment x 0.15 + Valuation x 0.15
+Growth x 0.30 + Moat x 0.25 + Sentiment x 0.20 + FinancialHealth x 0.15 + Valuation x 0.10
 
 Return this exact JSON:
 {{
@@ -129,7 +129,7 @@ Return this exact JSON:
         s_val = _safe_num(raw_scores.get("valuation"), 5)
 
         # Recalculate locally to ensure accuracy
-        calculated = round(s_growth * 0.25 + s_moat * 0.20 + s_fin * 0.25 + s_sent * 0.15 + s_val * 0.15, 2)
+        calculated = round(s_growth * 0.30 + s_moat * 0.25 + s_sent * 0.20 + s_fin * 0.15 + s_val * 0.10, 2)
 
         scores = {
             "growth": s_growth,
