@@ -1,69 +1,54 @@
 import { NextRequest } from "next/server";
-import { runInvestmentAgent } from "@/lib/graph";
 
+/**
+ * POST /api/research
+ *
+ * Thin proxy to the Python FastAPI backend.
+ * Auth is enforced by middleware.ts (returns 401 before this route runs).
+ * This route simply validates the payload, forwards to PYTHON_BACKEND_URL,
+ * and pipes the SSE stream back to the browser unchanged.
+ */
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const company = body.company;
+    const company = typeof body.company === "string" ? body.company.trim() : "";
 
-    if (!company || typeof company !== "string" || company.trim() === "") {
+    if (!company) {
       return new Response(JSON.stringify({ error: "Company name required" }), {
         status: 400,
         headers: { "Content-Type": "application/json" },
       });
     }
 
-    const encoder = new TextEncoder();
-    const encode = (text: string) => encoder.encode(text);
+    const backendUrl = process.env.PYTHON_BACKEND_URL;
+    if (!backendUrl) {
+      return new Response(
+        JSON.stringify({ error: "AI backend not configured. Set PYTHON_BACKEND_URL." }),
+        { status: 503, headers: { "Content-Type": "application/json" } }
+      );
+    }
 
-    const stream = new ReadableStream({
-      async start(controller) {
-        try {
-          const finalState = await runInvestmentAgent(company, (logs) => {
-            if (logs && logs.length > 0) {
-              const latest = logs[logs.length - 1];
-              controller.enqueue(
-                encode(
-                  `data: ${JSON.stringify({
-                    type: "log",
-                    message: latest,
-                  })}\n\n`
-                )
-              );
-            }
-          });
-
-          controller.enqueue(
-            encode(
-              `data: ${JSON.stringify({
-                type: "result",
-                data: finalState,
-              })}\n\n`
-            )
-          );
-        } catch (error) {
-          const errorMessage =
-            error instanceof Error ? error.message : String(error);
-          controller.enqueue(
-            encode(
-              `data: ${JSON.stringify({
-                type: "error",
-                message: errorMessage,
-              })}\n\n`
-            )
-          );
-        } finally {
-          controller.enqueue(encode(`data: [DONE]\n\n`));
-          controller.close();
-        }
-      },
+    const upstream = await fetch(`${backendUrl}/research`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ company }),
     });
 
-    return new Response(stream, {
+    if (!upstream.ok) {
+      const errText = await upstream.text().catch(() => "Unknown backend error");
+      return new Response(JSON.stringify({ error: errText }), {
+        status: upstream.status,
+        headers: { "Content-Type": "application/json" },
+      });
+    }
+
+    // Pipe the SSE stream from Python backend → browser directly
+    return new Response(upstream.body, {
       headers: {
         "Content-Type": "text/event-stream",
         "Cache-Control": "no-cache",
-        Connection: "keep-alive",
+        "Connection": "keep-alive",
+        "X-Accel-Buffering": "no",
       },
     });
   } catch (error) {
@@ -73,3 +58,4 @@ export async function POST(req: NextRequest) {
     });
   }
 }
+
