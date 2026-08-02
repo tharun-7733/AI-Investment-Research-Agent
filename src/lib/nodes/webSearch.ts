@@ -39,10 +39,11 @@ export const webSearchNode = async (state: AgentState): Promise<Partial<AgentSta
     // Step 2 — Run searches
     let searchResultsStr = "";
     if (queries.length > 0) {
-      const searchResults = await runMultipleSearches(queries);
+      let searchResults = await runMultipleSearches(queries);
       if (searchResults.length > 0) {
+        searchResults = searchResults.slice(0, 10); // Limit to top 10 results
         searchResultsStr = searchResults
-          .map((r) => `Title: ${r.title}\nURL: ${r.url}\nContent: ${r.content}`)
+          .map((r) => `Title: ${r.title}\nURL: ${r.url}\nContent: ${r.content.substring(0, 1000)}`)
           .join("\n\n---\n\n");
       }
     }
