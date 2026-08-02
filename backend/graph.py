@@ -7,7 +7,7 @@ Topology (identical to the TypeScript graph):
   START
     │
   identifier
-  ┌──┴──┐
+  ┌──┴──–––––––––┐
   webSearch  financials        ← parallel fan-out
      │
   competitive
