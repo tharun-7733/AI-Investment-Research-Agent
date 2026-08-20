@@ -47,7 +47,7 @@ async def reporter_node(state: AgentState) -> dict:
 
     try:
         model = ChatGroq(
-            model="llama-3.3-70b-versatile",
+            model="openai/gpt-oss-120b",
             temperature=0.3,
             max_tokens=2048,
         )

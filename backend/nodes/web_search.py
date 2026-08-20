@@ -22,7 +22,7 @@ async def web_search_node(state: AgentState) -> dict:
     try:
         # ── Step 1: Generate search queries ────────────────────────────────────
         query_llm = ChatGroq(
-            model="llama-3.3-70b-versatile",
+            model="openai/gpt-oss-120b",
             temperature=0.1,
             max_tokens=1024,
         )
@@ -67,7 +67,7 @@ async def web_search_node(state: AgentState) -> dict:
 
         # ── Step 3: Synthesize ──────────────────────────────────────────────────
         summary_llm = ChatGroq(
-            model="llama-3.3-70b-versatile",
+            model="openai/gpt-oss-120b",
             temperature=0.2,
             max_tokens=2048,
         )

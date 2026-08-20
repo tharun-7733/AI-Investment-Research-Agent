@@ -55,7 +55,7 @@ async def financials_node(state: AgentState) -> dict:
 
         # ── Step 2: Analyse with Groq ───────────────────────────────────────────
         llm = ChatGroq(
-            model="llama-3.3-70b-versatile",
+            model="openai/gpt-oss-120b",
             temperature=0.1,
             max_tokens=2048,
         )
